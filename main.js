@@ -253,8 +253,8 @@ function getColor(value) {
   const max = 1.5;
   const t = Math.max(0, Math.min(1, (value - min) / (max - min)));
 
-  // low = light blue, high = white
-  const low = { r: 173, g: 216, b: 230 }; // light blue
+  // low = gray (#808080), high = white (#FFFFFF)
+  const low = { r: 128, g: 128, b: 128 };  // gray
   const high = { r: 255, g: 255, b: 255 }; // white
 
   const r = Math.round(low.r + (high.r - low.r) * t);
@@ -263,6 +263,7 @@ function getColor(value) {
 
   return `rgb(${r}, ${g}, ${b})`;
 }
+
 
 
 
