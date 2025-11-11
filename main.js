@@ -5,6 +5,10 @@ let sliderPosition = 50;
 let isDragging = false;
 const years = [2015, 2020, 2025, 2030, 2035, 2040, 2045, 2050, 2055, 2060, 2065, 2070, 2075, 2080, 2085, 2090, 2095, 2100];
 
+// World map image variables
+let worldMapImage = null;
+let mapImageLoaded = false;
+
 // DOM elements
 let canvasLeft, canvasRight, mapContainer, sliderLine, rightMapContainer;
 let yearSlider, yearDisplay, prevYearBtn, nextYearBtn, colorScale;
@@ -42,6 +46,9 @@ function init() {
     // Draw color scale
     drawColorScale();
     
+    // Load world map image
+    loadWorldMapImage();
+    
     // Load the actual CSV file
     loadCSV('precip_5yr_cesm2waccm_ncar.csv');
     
@@ -65,6 +72,19 @@ function resizeCanvas() {
     if (data.length > 0) {
         updateMaps();
     }
+}
+
+// Load world map image
+function loadWorldMapImage() {
+    worldMapImage = new Image();
+    worldMapImage.crossOrigin = "anonymous";
+    worldMapImage.onload = function() {
+        mapImageLoaded = true;
+        console.log('World map image loaded');
+        updateMaps();
+    };
+    // Using a public domain world map
+    worldMapImage.src = 'https://upload.wikimedia.org/wikipedia/commons/8/83/Equirectangular_projection_SW.jpg';
 }
 
 // Load CSV file
@@ -241,101 +261,6 @@ function getColor(value) {
     return `rgb(${r}, ${g}, ${b})`;
 }
 
-function drawWorldMap(ctx, width, height) {
-    // Draw oceans
-    ctx.fillStyle = '#2c3e50';
-    ctx.fillRect(0, 0, width, height);
-    
-    // Draw continents in a simple style
-    ctx.fillStyle = '#34495e';
-    ctx.strokeStyle = '#7f8c8d';
-    ctx.lineWidth = 1;
-    
-    // Simple continent outlines (approximate shapes)
-    // North America
-    drawContinent(ctx, width, height, [
-        [-170, 70], [-140, 70], [-120, 50], [-110, 40], [-100, 30], 
-        [-90, 25], [-80, 25], [-75, 45], [-60, 50], [-50, 60], 
-        [-80, 80], [-120, 75], [-170, 70]
-    ]);
-    
-    // South America
-    drawContinent(ctx, width, height, [
-        [-80, 10], [-75, 5], [-70, -10], [-65, -20], [-60, -35], 
-        [-70, -55], [-75, -50], [-80, -40], [-85, -20], [-85, 0], [-80, 10]
-    ]);
-    
-    // Europe
-    drawContinent(ctx, width, height, [
-        [-10, 60], [0, 55], [10, 55], [20, 60], [30, 65], [40, 60], 
-        [30, 50], [20, 45], [10, 40], [0, 45], [-10, 50], [-10, 60]
-    ]);
-    
-    // Africa
-    drawContinent(ctx, width, height, [
-        [-15, 35], [0, 30], [10, 30], [20, 25], [35, 10], [40, 0], 
-        [40, -10], [35, -25], [20, -35], [15, -30], [10, -20], 
-        [0, -10], [-10, 0], [-15, 15], [-15, 35]
-    ]);
-    
-    // Asia
-    drawContinent(ctx, width, height, [
-        [40, 70], [60, 75], [80, 75], [100, 70], [120, 65], [140, 60], 
-        [145, 50], [140, 40], [130, 35], [120, 25], [110, 20], 
-        [100, 15], [90, 10], [80, 15], [70, 20], [60, 30], 
-        [50, 40], [40, 50], [40, 70]
-    ]);
-    
-    // Australia
-    drawContinent(ctx, width, height, [
-        [115, -10], [125, -12], [135, -15], [145, -20], [150, -30], 
-        [145, -38], [135, -35], [125, -30], [115, -25], [115, -10]
-    ]);
-    
-    // Antarctica
-    drawContinent(ctx, width, height, [
-        [-180, -70], [180, -70], [180, -90], [-180, -90], [-180, -70]
-    ]);
-    
-    // Draw latitude/longitude grid lines
-    ctx.strokeStyle = '#4a5568';
-    ctx.lineWidth = 0.5;
-    
-    // Latitude lines
-    for (let lat = -80; lat <= 80; lat += 20) {
-        const y = ((90 - lat) / 180) * height;
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(width, y);
-        ctx.stroke();
-    }
-    
-    // Longitude lines
-    for (let lon = 0; lon < 360; lon += 30) {
-        const x = (lon / 360) * width;
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, height);
-        ctx.stroke();
-    }
-}
-
-function drawContinent(ctx, width, height, coords) {
-    ctx.beginPath();
-    coords.forEach((coord, i) => {
-        const x = ((coord[0] + 180) / 360) * width;
-        const y = ((90 - coord[1]) / 180) * height;
-        if (i === 0) {
-            ctx.moveTo(x, y);
-        } else {
-            ctx.lineTo(x, y);
-        }
-    });
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-}
-
 function drawMap(canvas, scenario) {
     if (!canvas) {
         console.error('Canvas not found');
@@ -350,8 +275,12 @@ function drawMap(canvas, scenario) {
     ctx.fillStyle = '#1a1a2e';
     ctx.fillRect(0, 0, width, height);
     
-    // Draw world map background
-    drawWorldMap(ctx, width, height);
+    // Draw world map image if loaded
+    if (mapImageLoaded && worldMapImage) {
+        ctx.globalAlpha = 0.5; // Make the map semi-transparent
+        ctx.drawImage(worldMapImage, 0, 0, width, height);
+        ctx.globalAlpha = 1.0; // Reset alpha
+    }
     
     // Filter data
     const filteredData = data.filter(d => d.year === currentYear && d.scenario === scenario);
@@ -372,8 +301,8 @@ function drawMap(canvas, scenario) {
         const size = Math.max(2, width / 144);
         
         const color = getColor(point.pr_mm_day);
-        // Add transparency (0.6 = 60% opacity)
-        const transparentColor = color.replace('rgb', 'rgba').replace(')', ', 0.6)');
+        // Add transparency (0.5 = 50% opacity so map shows through better)
+        const transparentColor = color.replace('rgb', 'rgba').replace(')', ', 0.5)');
         
         ctx.fillStyle = transparentColor;
         ctx.fillRect(x - size/2, y - size/2, size, size);
@@ -387,6 +316,7 @@ function drawMap(canvas, scenario) {
     ctx.fillText(scenario.toUpperCase(), 20, 40);
     ctx.shadowBlur = 0;
 }
+
 function updateMaps() {
     console.log('Updating maps for year:', currentYear);
     drawMap(canvasLeft, 'ssp126');
