@@ -167,101 +167,140 @@ function setupEventListeners() {
         }
     });
 
-  updateYear();
-  // === BRUSH SELECTION + LINE CHART ===
-
-  const brushLayer = baseSvg.append("g").attr("class", "brush-layer");
-
-  const brush = d3.brush()
-    .extent([[0, 0], [W, H]])
-    .on("end", brushed);
-
-  brushLayer.call(brush);
-
-  function brushed(event) {
-    const s = event.selection;
-    if (!s) return;
-
-    const [[x0, y0], [x1, y1]] = s;
-
-    const selected = rows.filter(d => {
-      const xy = projection([d.lon, d.lat]);
-      if (!xy) return false;
-      const [x, y] = xy;
-      return x0 <= x && x <= x1 && y0 <= y && y <= y1;
-    });
-
-    if (!selected.length) return;
-
-    const grouped = d3.rollups(
-      selected,
-      v => d3.mean(v, d => d.value),
-      d => d.scenario,
-      d => d.year
-    );
-
-    renderLineChart(grouped);
-  }
-
-  function renderLineChart(grouped) {
-    d3.select("#linechart").remove();
-
-    const margin = { top: 30, right: 30, bottom: 35, left: 45 };
-    const width = 500, height = 260;
-
-    const svg = d3.select("body")
-      .append("svg")
-      .attr("id", "linechart")
-      .attr("width", width + margin.left + margin.right)
-      .attr("height", height + margin.top + margin.bottom)
-      .style("display", "block")
-      .style("margin", "20px auto")
-      .append("g")
-      .attr("transform", `translate(${margin.left},${margin.top})`);
-
-    const allYears = Array.from(new Set(rows.map(d => d.year))).sort(d3.ascending);
-    const allVals = grouped.flatMap(([_, arr]) => arr.map(([_, v]) => v));
-    const yScale = d3.scaleLinear().domain(d3.extent(allVals)).nice().range([height, 0]);
-    const xScale = d3.scaleLinear().domain(d3.extent(allYears)).range([0, width]);
-    const color = d3.scaleOrdinal(d3.schemeSet2);
-
-    const line = d3.line()
-      .x(([year]) => xScale(year))
-      .y(([, val]) => yScale(val));
-
-    svg.append("g")
-      .attr("transform", `translate(0,${height})`)
-      .call(d3.axisBottom(xScale).ticks(allYears.length).tickFormat(d3.format("d")));
-
-    svg.append("g").call(d3.axisLeft(yScale));
-
-    grouped.forEach(([scenario, arr]) => {
-      svg.append("path")
-        .datum(arr.sort((a,b)=>a[0]-b[0]))
-        .attr("fill", "none")
-        .attr("stroke", color(scenario))
-        .attr("stroke-width", 2)
-        .attr("d", line);
-
-      svg.append("text")
-        .attr("x", width - 40)
-        .attr("y", yScale(arr[arr.length - 1][1]))
-        .attr("fill", color(scenario))
-        .attr("dy", "0.35em")
-        .text(scenario);
-    });
-
-    svg.append("text")
-      .attr("x", width / 2)
-      .attr("y", -10)
-      .attr("text-anchor", "middle")
-      .attr("fill", "#9ab")
-      .text("Average Precipitation (mm/day) in Selected Area");
-  }
-
-})();
     nextYearBtn.addEventListener('click', () => {
         const idx = years.indexOf(currentYear);
         if (idx < years.length - 1) {
             currentYear = years[idx + 1];
-            yearSlider.value = idx +
+            yearSlider.value = idx + 1;
+            yearDisplay.textContent = currentYear;
+            updateMaps();
+            updateYearButtons();
+        }
+    });
+
+    // Map slider
+    mapContainer.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        updateSliderPosition(e);
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (isDragging) {
+            updateSliderPosition(e);
+        }
+    });
+
+    document.addEventListener('mouseup', () => {
+        isDragging = false;
+    });
+
+    // Touch events
+    mapContainer.addEventListener('touchstart', (e) => {
+        isDragging = true;
+        updateSliderPosition(e.touches[0]);
+        e.preventDefault();
+    });
+
+    document.addEventListener('touchmove', (e) => {
+        if (isDragging) {
+            updateSliderPosition(e.touches[0]);
+            e.preventDefault();
+        }
+    });
+
+    document.addEventListener('touchend', () => {
+        isDragging = false;
+    });
+}
+
+function updateSliderPosition(e) {
+    const rect = mapContainer.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    sliderPosition = Math.max(0, Math.min(100, (x / rect.width) * 100));
+    
+    sliderLine.style.left = `${sliderPosition}%`;
+    rightMapContainer.style.clipPath = `inset(0 0 0 ${sliderPosition}%)`;
+}
+
+function updateYearButtons() {
+    const idx = years.indexOf(currentYear);
+    prevYearBtn.disabled = idx === 0;
+    nextYearBtn.disabled = idx === years.length - 1;
+}
+
+function getColor(value) {
+    const min = 0.1;
+    const max = 1.5;
+    const normalized = Math.max(0, Math.min(1, (value - min) / (max - min)));
+    
+    const r = Math.floor(normalized * 255);
+    const b = Math.floor((1 - normalized) * 255);
+    const g = Math.floor(128 * (1 - Math.abs(normalized - 0.5) * 2));
+    
+    return `rgb(${r}, ${g}, ${b})`;
+}
+
+function drawMap(canvas, scenario) {
+    if (!canvas) {
+        console.error('Canvas not found');
+        return;
+    }
+    
+    const ctx = canvas.getContext('2d');
+    const width = canvas.width;
+    const height = canvas.height;
+    
+    // Clear canvas
+    ctx.fillStyle = '#1a1a2e';
+    ctx.fillRect(0, 0, width, height);
+    
+    // Filter data
+    const filteredData = data.filter(d => d.year === currentYear && d.scenario === scenario);
+    console.log(`Drawing ${scenario} for ${currentYear}:`, filteredData.length, 'points');
+    
+    if (filteredData.length === 0) {
+        console.warn('No data to display for', scenario, currentYear);
+        ctx.fillStyle = 'white';
+        ctx.font = '16px Arial';
+        ctx.fillText(`No data for ${scenario} ${currentYear}`, 20, 60);
+        return;
+    }
+    
+    // Draw data points
+    filteredData.forEach(point => {
+        const x = ((point.lon + 180) / 360) * width;
+        const y = ((90 - point.lat) / 180) * height;
+        const size = Math.max(2, width / 144); // Smaller points for better detail
+        
+        ctx.fillStyle = getColor(point.pr_mm_day);
+        ctx.fillRect(x - size/2, y - size/2, size, size);
+    });
+    
+    // Draw scenario label
+    ctx.fillStyle = 'white';
+    ctx.font = 'bold 24px Arial';
+    ctx.shadowColor = 'rgba(0,0,0,0.8)';
+    ctx.shadowBlur = 4;
+    ctx.fillText(scenario.toUpperCase(), 20, 40);
+    ctx.shadowBlur = 0;
+}
+
+function updateMaps() {
+    console.log('Updating maps for year:', currentYear);
+    drawMap(canvasLeft, 'ssp126');
+    drawMap(canvasRight, 'ssp245');
+}
+
+function drawColorScale() {
+    for (let i = 0; i < 50; i++) {
+        const div = document.createElement('div');
+        div.style.flex = '1';
+        div.style.backgroundColor = getColor(0.1 + (i / 50) * 1.4);
+        colorScale.appendChild(div);
+    }
+}
+
+// Initialize year buttons
+if (prevYearBtn && nextYearBtn) {
+    updateYearButtons();
+}
