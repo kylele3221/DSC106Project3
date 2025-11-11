@@ -32,17 +32,37 @@ document.addEventListener('DOMContentLoaded', function() {
     prevYearBtn = document.getElementById('prevYear');
     nextYearBtn = document.getElementById('nextYear');
     colorScale = document.getElementById('colorScale');
+    lineCanvas = document.getElementById('lineCanvas');  // ← NEW
     
     // Initialize
     init();
 });
+
 
 function init() {
     console.log('Initializing application...');
     
     // Set canvas sizes
     resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
+    resizeChart();
+    window.addEventListener('resize', () => {
+        resizeCanvas();
+        resizeChart();
+    });
+
+    function resizeChart() {
+        if (!lineCanvas) return;
+        const width = lineCanvas.clientWidth;
+        const height = lineCanvas.clientHeight;
+        lineCanvas.width = width;
+        lineCanvas.height = height;
+    
+        if (yearlyAverages.length > 0) {
+            drawLineChart();
+        }
+    }
+
+
     
     // Setup event listeners
     setupEventListeners();
@@ -147,6 +167,9 @@ async function loadCSV(filePath) {
         console.log('Unique years:', [...new Set(data.map(d => d.year))]);
         console.log('Unique scenarios:', [...new Set(data.map(d => d.scenario))]);
         
+        computeYearlyAverages();
+        resizeChart();
+        drawLineChart();
         updateMaps();
     } catch (error) {
         console.error('Error loading CSV:', error);
@@ -269,6 +292,133 @@ function getColor(value) {
 }
 
 
+function computeYearlyAverages() {
+    const sums = {};
+    const counts = {};
+
+    data.forEach(d => {
+        if (!sums[d.year]) {
+            sums[d.year] = 0;
+            counts[d.year] = 0;
+        }
+        sums[d.year] += d.pr_mm_day;
+        counts[d.year] += 1;
+    });
+
+    yearlyAverages = years
+        .filter(y => sums[y] !== undefined)
+        .map(y => ({
+            year: y,
+            avg: sums[y] / counts[y]
+        }));
+}
+
+function drawLineChart() {
+    if (!lineCanvas || yearlyAverages.length === 0) return;
+
+    const ctx = lineCanvas.getContext('2d');
+    const width = lineCanvas.width;
+    const height = lineCanvas.height;
+
+    ctx.fillStyle = '#1a1a2e';
+    ctx.fillRect(0, 0, width, height);
+
+    const paddingLeft = 50;
+    const paddingRight = 20;
+    const paddingTop = 30;
+    const paddingBottom = 30;
+
+    const x0 = paddingLeft;
+    const y0 = height - paddingBottom;
+    const x1 = width - paddingRight;
+    const y1 = paddingTop;
+
+    const minYear = yearlyAverages[0].year;
+    const maxYear = yearlyAverages[yearlyAverages.length - 1].year;
+
+    let minVal = Math.min(...yearlyAverages.map(d => d.avg));
+    let maxVal = Math.max(...yearlyAverages.map(d => d.avg));
+
+    if (minVal === maxVal) {
+        minVal *= 0.9;
+        maxVal *= 1.1;
+    }
+
+    const xScale = year =>
+        x0 + ((year - minYear) / (maxYear - minYear || 1)) * (x1 - x0);
+
+    const yScale = val =>
+        y0 - ((val - minVal) / (maxVal - minVal || 1)) * (y0 - y1);
+
+    // Axes
+    ctx.strokeStyle = '#6b7280';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x0, y0);
+    ctx.lineTo(x1, y0); // x-axis
+    ctx.moveTo(x0, y0);
+    ctx.lineTo(x0, y1); // y-axis
+    ctx.stroke();
+
+    // Y ticks
+    const yTicks = 3;
+    ctx.font = '12px Arial';
+    ctx.fillStyle = '#9ca3af';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+
+    for (let i = 0; i <= yTicks; i++) {
+        const t = i / yTicks;
+        const val = minVal + t * (maxVal - minVal);
+        const y = yScale(val);
+
+        ctx.fillText(val.toFixed(2), x0 - 8, y);
+
+        ctx.strokeStyle = 'rgba(148, 163, 184, 0.2)';
+        ctx.beginPath();
+        ctx.moveTo(x0, y);
+        ctx.lineTo(x1, y);
+        ctx.stroke();
+    }
+
+    // X labels (each year)
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillStyle = '#9ca3af';
+    yearlyAverages.forEach(d => {
+        const x = xScale(d.year);
+        ctx.fillText(d.year, x, y0 + 4);
+    });
+
+    // Line
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    yearlyAverages.forEach((d, i) => {
+        const x = xScale(d.year);
+        const y = yScale(d.avg);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+
+    // Points
+    ctx.fillStyle = '#38bdf8';
+    yearlyAverages.forEach(d => {
+        const x = xScale(d.year);
+        const y = yScale(d.avg);
+        ctx.beginPath();
+        ctx.arc(x, y, 3, 0, 2 * Math.PI);
+        ctx.fill();
+    });
+
+    // Title
+    ctx.fillStyle = 'white';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.font = '14px Arial';
+    ctx.fillText('Average precipitation (mm/day) by year', x0, paddingTop - 22);
+}
 
 
 function drawMap(canvas, scenario) {
