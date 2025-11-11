@@ -11,7 +11,11 @@ let mapImageLoaded = false;
 
 // DOM elements
 let canvasLeft, canvasRight, mapContainer, sliderLine, rightMapContainer;
-let yearSlider, yearDisplay, prevYearBtn, nextYearBtn, colorScale;
+let yearSlider, yearDisplay, prevYearBtn, nextYearBtn, colorScale, lineCanvas;
+
+// Derived data
+let yearlyAverages = [];
+
 
 // Wait for DOM to load
 document.addEventListener('DOMContentLoaded', function() {
