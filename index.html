@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>D3 Swipe Compare (One CSV, Two Scenarios)</title>
+<style>
+  :root { --bg:#0b1020; --card:#121a2b; --text:#e9eef9; --muted:#9ab; }
+  body { margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--text); }
+  .wrap { max-width:1100px; margin:24px auto; padding:0 16px; }
+  .panel { background:var(--card); border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,.25); padding:16px; }
+  h1 { margin:0 0 8px 0; font-size:20px; }
+  .controls { display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin:12px 0 8px; }
+  .controls label { color:var(--muted); font-size:14px; }
+  .controls .spacer { flex:1; }
+  .btn { background:#1f2a44; border:none; color:var(--text); padding:8px 12px; border-radius:10px; cursor:pointer; font-weight:600; }
+  .btn:hover { filter:brightness(1.12); }
+  input[type="range"] { width:240px; }
+  select { background:#0d1426; color:var(--text); border:1px solid #243861; border-radius:10px; padding:6px 8px; }
+  .legend text { font-size:12px; fill:var(--muted); }
+  .vis { position:relative; user-select:none; }
+  svg.basemap { width:100%; height:auto; display:block; position:relative; z-index:0; }
+  canvas.layer { position:absolute; left:0; top:0; z-index:1; pointer-events:none; }
+  .layerB { clip-path: inset(0 0 0 var(--clipLeft, 50%)); }
+  .divider { position:absolute; top:0; height:100%; width:0; border-left:3px solid #ffffffbb; z-index:3; pointer-events:none; }
+  .handle { position:absolute; top:50%; transform:translate(-50%,-50%); z-index:4; width:34px; height:34px; background:#1f2a44; border:2px solid #fff; border-radius:50%; display:grid; place-items:center; box-shadow:0 6px 20px rgba(0,0,0,.4); pointer-events:none; }
+  .handle::before { content:"↔"; color:#fff; font-weight:700; }
+  .badge { position:absolute; top:10px; background:#0d1426; color:#e9eef9; border:1px solid #243861; border-radius:10px; padding:4px 8px; font-size:12px; z-index:5; }
+  .badgeA { left:12px; }
+  .badgeB { right:12px; }
+  .tooltip { position:absolute; pointer-events:none; background:#0d1426; color:var(--text);
+    border:1px solid #253052; border-radius:10px; padding:8px 10px; font-size:13px;
+    box-shadow:0 6px 20px rgba(0,0,0,.35); transform:translate(-50%, -120%); white-space:nowrap; z-index:6; opacity:0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="panel">
+    <h1>Swipe Compare — Two Scenarios from One CSV</h1>
+    <div class="controls">
+      <label>Left:
+        <select id="selA"></select>
+      </label>
+      <label>Right:
+        <select id="selB"></select>
+      </label>
+      <button class="btn" id="play">▶ Play</button>
+      <label>Year:&nbsp;<strong id="yearLabel">—</strong></label>
+      <input id="yearSlider" type="range" min="0" max="1" step="1" value="0" />
+      <span class="spacer"></span>
+      <label>Point size:
+        <input id="ptSize" type="range" min="0.5" max="3.5" step="0.5" value="1.6" />
+      </label>
+      <label style="margin-left:8px;">Opacity:
+        <input id="ptAlpha" type="range" min="0.1" max="1" step="0.1" value="0.85" />
+      </label>
+    </div>
+
+    <div class="vis" id="vis">
+      <div class="badge badgeA" id="labelA">Left</div>
+      <div class="badge badgeB" id="labelB">Right</div>
+      <div class="tooltip" id="tooltip"></div>
+
+      <svg class="basemap" id="basemap" viewBox="0 0 1000 560" role="img" aria-label="World basemap"></svg>
+      <!-- canvases injected below -->
+      <div class="divider" id="divider"></div>
+      <div class="handle" id="handle"></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/d3@7"></script>
+<script src="https://unpkg.com/topojson-client@3"></script>
+<script>
+(async function() {
+  // -------- CONFIG --------
+  const CSV = "precip_5yr_cesm2waccm_ncar.csv"; // your file
+  const WORLD_URL = "https://unpkg.com/world-atlas@2/countries-110m.json";
+  const COLS = { year:"year", lat:"lat", lon:"lon", value:"pr_mm_day", scenario:"scenario" };
+  const usePerYearColorScale = false; // set true to rescale colors each year
+
+  // -------- ELEMENTS / SIZE --------
+  const vis = d3.select("#vis");
+  const baseSvg = d3.select("#basemap");
+  const W = 1000, H = 560, PAD = 8;
+
+  const divider = document.getElementById("divider");
+  const handle  = document.getElementById("handle");
+  const tooltip = d3.select("#tooltip");
+
+  // canvases (left=A, right=B)
+  const canvasA = vis.append("canvas").classed("layer layerA", true)
+    .attr("width", W).attr("height", H).style("width", W+"px").style("height", H+"px").node();
+  const canvasB = vis.append("canvas").classed("layer layerB", true)
+    .attr("width", W).attr("height", H).style("width", W+"px").style("height", H+"px").node();
+  const ctxA = canvasA.getContext("2d");
+  const ctxB = canvasB.getContext("2d");
+
+  const selA = d3.select("#selA");
+  const selB = d3.select("#selB");
+  const labelA = d3.select("#labelA");
+  const labelB = d3.select("#labelB");
+
+  // -------- PROJECTION --------
+  const projection = d3.geoNaturalEarth1()
+    .fitExtent([[PAD, PAD], [W - PAD, H - PAD]], {type:"Sphere"});
+  const geoPath = d3.geoPath(projection);
+
+  // -------- LOAD --------
+  const [worldTopo, rowsRaw] = await Promise.all([
+    d3.json(WORLD_URL),
+    d3.csv(CSV, d => ({
+      year: +d[COLS.year],
+      lat: +d[COLS.lat],
+      lon: +d[COLS.lon],
+      value: +d[COLS.value],
+      scenario: d[COLS.scenario]
+    }))
+  ]);
+  const rows = rowsRaw.filter(r =>
+    Number.isFinite(r.year) && Number.isFinite(r.lat) &&
+    Number.isFinite(r.lon) && Number.isFinite(r.value) && r.scenario
+  );
+
+  // basemap
+  const countries = topojson.feature(worldTopo, worldTopo.objects.countries);
+  baseSvg.append("path").attr("d", geoPath({type:"Sphere"})).attr("fill","#0c152a");
+  baseSvg.append("g").selectAll("path")
+    .data(countries.features).join("path")
+    .attr("d", geoPath).attr("fill","#0e1d3b")
+    .attr("stroke","#243861").attr("stroke-width",0.5).attr("vector-effect","non-scaling-stroke");
+
+  // years & scenarios
+  const years = Array.from(new Set(rows.map(d=>d.year))).sort((a,b)=>a-b);
+  const scenarios = Array.from(new Set(rows.map(d=>d.scenario))).sort();
+  const byScenarioYear = d3.group(rows, d=>d.scenario, d=>d.year); // Map(scenario -> Map(year -> rows[]))
+
+  // populate selects
+  selA.selectAll("option").data(scenarios).join("option").attr("value", d=>d).text(d=>d);
+  selB.selectAll("option").data(scenarios).join("option").attr("value", d=>d).text(d=>d);
+  // defaults: first two distinct scenarios (or the same if only one exists)
+  selA.property("value", scenarios[0] ?? "");
+  selB.property("value", scenarios[1] ?? scenarios[0] ?? "");
+
+  labelA.text(selA.property("value") || "Left");
+  labelB.text(selB.property("value") || "Right");
+
+  // color scale (global by default)
+  const allVals = rows.map(d=>d.value);
+  const globalExtent = d3.extent(allVals);
+  const color = d3.scaleSequential().domain(globalExtent).interpolator(d3.interpolateTurbo);
+
+  // legend
+  const legend = baseSvg.append("g").attr("class","legend").attr("transform",`translate(${W-260},${H-60})`);
+  drawLegend(globalExtent);
+  function drawLegend(domain){
+    legend.selectAll("*").remove();
+    const defs = baseSvg.append("defs");
+    const id = "grad" + Math.random().toString(36).slice(2);
+    const grad = defs.append("linearGradient").attr("id",id).attr("x1","0%").attr("x2","100%");
+    d3.range(0,1.0001,0.1).forEach(t=>{
+      grad.append("stop").attr("offset",`${t*100}%`).attr("stop-color", d3.interpolateTurbo(t));
+    });
+    legend.append("rect").attr("width",200).attr("height",12).attr("fill",`url(#${id})`).attr("stroke","#243861");
+    const s = d3.scaleLinear().domain(domain).range([0,200]);
+    legend.append("g").attr("transform","translate(0,12)").call(d3.axisBottom(s).ticks(5).tickSize(4))
+      .selectAll("text").attr("fill","#9ab");
+    legend.append("text").attr("x",0).attr("y",-6).attr("fill","#9ab").text("pr (mm/day)");
+  }
+
+  // -------- UI --------
+  const slider = d3.select("#yearSlider").attr("min",0).attr("max",Math.max(0,years.length-1)).attr("value",0);
+  const yearLabel = d3.select("#yearLabel");
+  const ptSize = d3.select("#ptSize");
+  const ptAlpha = d3.select("#ptAlpha");
+  const playBtn = d3.select("#play");
+
+  let playing=false, timer=null, frameDelay=900;
+
+  selA.on("change", () => { labelA.text(selA.property("value")); drawBoth(currentYear()); });
+  selB.on("change", () => { labelB.text(selB.property("value")); drawBoth(currentYear()); });
+  slider.on("input", updateYear);
+  ptSize.on("input", () => drawBoth(currentYear()));
+  ptAlpha.on("input", () => drawBoth(currentYear()));
+  playBtn.on("click", () => {
+    playing = !playing;
+    playBtn.text(playing ? "⏸ Pause" : "▶ Play");
+    if (playing) loop(); else clearTimeout(timer);
+  });
+
+  function currentYear(){ return years[+slider.node().value]; }
+  function setYearIndex(i){ slider.node().value = Math.max(0, Math.min(years.length-1, i)); updateYear(); }
+  function loop(){ setYearIndex((+slider.node().value + 1) % years.length); timer=setTimeout(loop, frameDelay); }
+
+  // -------- Swipe interaction --------
+  const visNode = document.getElementById("vis");
+  const bounds = () => visNode.getBoundingClientRect();
+  let splitX = Math.round(W/2);
+
+  function setSplit(px){
+    splitX = Math.max(0, Math.min(W, px));
+    canvasB.style.clipPath = `inset(0 0 0 ${splitX}px)`;
+    divider.style.left = splitX + "px";
+    handle.style.left  = splitX + "px";
+  }
+  setSplit(Math.round(W/2));
+
+  vis.on("pointerdown", (ev)=> { move(ev); vis.on("pointermove", move); });
+  d3.select(window).on("pointerup", ()=> vis.on("pointermove", null));
+  function move(ev){
+    const r = bounds();
+    setSplit(Math.round((ev.clientX - r.left) * (W / r.width)));
+  }
+
+  // -------- Hover tooltip (nearest on visible side) --------
+  visNode.addEventListener("mousemove",(ev)=>{
+    const r = bounds();
+    const mx = (ev.clientX - r.left) * (W / r.width);
+    const my = (ev.clientY - r.top)  * (H / r.height);
+    const yr = currentYear();
+    const sideA = mx <= splitX;
+    const scen = sideA ? selA.property("value") : selB.property("value");
+    const rows = (byScenarioYear.get(scen)?.get(yr)) || [];
+    const radius = +ptSize.node().value * 4;
+    let best=null, bestD2=radius*radius;
+    for (const d of rows){
+      const xy = projection([d.lon, d.lat]); if (!xy) continue;
+      const dx = xy[0]-mx, dy=xy[1]-my, d2 = dx*dx+dy*dy;
+      if (d2 < bestD2){ bestD2=d2; best={x:xy[0], y:xy[1], d}; }
+    }
+    if (best){
+      tooltip.style("left", best.x+"px").style("top", best.y+"px").style("opacity",1)
+        .html(`<div><strong>${yr}</strong> — ${scen}</div>
+               <div>Lat: ${best.d.lat.toFixed(2)}, Lon: ${best.d.lon.toFixed(2)}</div>
+               <div>pr: <strong>${best.d.value.toFixed(3)}</strong> mm/day</div>`);
+    } else tooltip.style("opacity",0);
+  });
+  visNode.addEventListener("mouseleave", ()=> tooltip.style("opacity",0));
+
+  // -------- Drawing --------
+  function drawPoints(ctx, data){
+    ctx.clearRect(0,0,W,H);
+    const r = +ptSize.node().value;
+    const a = +ptAlpha.node().value;
+    ctx.globalAlpha = a;
+    for (const d of data){
+      const xy = projection([d.lon, d.lat]); if (!xy) continue;
+      ctx.beginPath();
+      ctx.fillStyle = color(d.value);
+      ctx.arc(xy[0], xy[1], r, 0, Math.PI*2);
+      ctx.fill();
+    }
+  }
+
+  function drawBoth(yr){
+    const scenA = selA.property("value");
+    const scenB = selB.property("value");
+    const A = (byScenarioYear.get(scenA)?.get(yr)) || [];
+    const B = (byScenarioYear.get(scenB)?.get(yr)) || [];
+
+    if (usePerYearColorScale){
+      const ext = d3.extent(A.concat(B), d=>d.value);
+      color.domain(ext[0]===undefined ? globalExtent : ext);
+      drawLegend(color.domain());
+    } else {
+      color.domain(globalExtent);
+      drawLegend(globalExtent);
+    }
+    drawPoints(ctxA, A);
+    drawPoints(ctxB, B);
+  }
+
+  function updateYear(){
+    const yr = currentYear();
+    d3.select("#yearLabel").text(yr);
+    drawBoth(yr);
+  }
+
+  // initial render
+  updateYear();
+})();
+</script>
+</body>
+</html>
