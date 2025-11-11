@@ -16,11 +16,10 @@ let yearSlider, yearDisplay, prevYearBtn, nextYearBtn, colorScale, lineCanvas;
 // Derived data
 let yearlyAverages = [];
 
-
 // Wait for DOM to load
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     console.log('DOM loaded, initializing...');
-    
+
     // Get DOM elements
     canvasLeft = document.getElementById('canvasLeft');
     canvasRight = document.getElementById('canvasRight');
@@ -32,16 +31,15 @@ document.addEventListener('DOMContentLoaded', function() {
     prevYearBtn = document.getElementById('prevYear');
     nextYearBtn = document.getElementById('nextYear');
     colorScale = document.getElementById('colorScale');
-    lineCanvas = document.getElementById('lineCanvas');  // ← NEW
-    
+    lineCanvas = document.getElementById('lineCanvas');
+
     // Initialize
     init();
 });
 
-
 function init() {
     console.log('Initializing application...');
-    
+
     // Set canvas sizes
     resizeCanvas();
     resizeChart();
@@ -50,32 +48,18 @@ function init() {
         resizeChart();
     });
 
-    function resizeChart() {
-        if (!lineCanvas) return;
-        const width = lineCanvas.clientWidth;
-        const height = lineCanvas.clientHeight;
-        lineCanvas.width = width;
-        lineCanvas.height = height;
-    
-        if (yearlyAverages.length > 0) {
-            drawLineChart();
-        }
-    }
-
-
-    
     // Setup event listeners
     setupEventListeners();
-    
+
     // Draw color scale
     drawColorScale();
-    
+
     // Load world map image
     loadWorldMapImage();
-    
+
     // Load the actual CSV file
     loadCSV('precip_5yr_cesm2waccm_ncar.csv');
-    
+
     console.log('Initialization started, loading data...');
 }
 
@@ -83,20 +67,21 @@ function resizeCanvas() {
     const container = mapContainer;
     const width = container.clientWidth;
     const height = container.clientHeight;
-    
+
     // Set canvas resolution
     canvasLeft.width = width;
     canvasLeft.height = height;
     canvasRight.width = width;
     canvasRight.height = height;
-    
+
     console.log('Canvas resized to:', width, 'x', height);
-    
+
     // Redraw if data exists
     if (data.length > 0) {
         updateMaps();
     }
 }
+
 function resizeChart() {
     if (!lineCanvas) return;
     const width = lineCanvas.clientWidth;
@@ -109,17 +94,15 @@ function resizeChart() {
     }
 }
 
-
 // Load world map image
 function loadWorldMapImage() {
     worldMapImage = new Image();
-    worldMapImage.crossOrigin = "anonymous";
-    worldMapImage.onload = function() {
+    worldMapImage.crossOrigin = 'anonymous';
+    worldMapImage.onload = function () {
         mapImageLoaded = true;
         console.log('World map image loaded');
         updateMaps();
     };
-    // Using a public domain world map
     worldMapImage.src = 'worldImage.png';
 }
 
@@ -127,39 +110,39 @@ function loadWorldMapImage() {
 async function loadCSV(filePath) {
     try {
         console.log('Loading CSV from:', filePath);
-        
+
         // Show loading message
         const ctxLeft = canvasLeft.getContext('2d');
         const ctxRight = canvasRight.getContext('2d');
-        
+
         ctxLeft.fillStyle = '#1a1a2e';
         ctxLeft.fillRect(0, 0, canvasLeft.width, canvasLeft.height);
         ctxLeft.fillStyle = 'white';
         ctxLeft.font = '20px Arial';
         ctxLeft.fillText('Loading data...', 20, 40);
-        
+
         ctxRight.fillStyle = '#1a1a2e';
         ctxRight.fillRect(0, 0, canvasRight.width, canvasRight.height);
         ctxRight.fillStyle = 'white';
         ctxRight.font = '20px Arial';
         ctxRight.fillText('Loading data...', 20, 40);
-        
+
         const response = await fetch(filePath);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
-        
+
         const csvText = await response.text();
         const lines = csvText.trim().split('\n');
-        
+
         console.log('CSV loaded, parsing', lines.length, 'lines...');
-        
+
         data = [];
         // Skip header line (index 0)
         for (let i = 1; i < lines.length; i++) {
             const line = lines[i].trim();
             if (!line) continue;
-            
+
             const values = line.split(',');
             if (values.length >= 5) {
                 data.push({
@@ -171,32 +154,29 @@ async function loadCSV(filePath) {
                 });
             }
         }
-        
+
         console.log('CSV parsed successfully:', data.length, 'data points');
-        
-        // Log sample data to verify
         console.log('Sample data point:', data[0]);
         console.log('Unique years:', [...new Set(data.map(d => d.year))]);
         console.log('Unique scenarios:', [...new Set(data.map(d => d.scenario))]);
-        
+
         computeYearlyAverages();
         resizeChart();
         drawLineChart();
         updateMaps();
     } catch (error) {
         console.error('Error loading CSV:', error);
-        
-        // Show error message on canvas
+
         const ctxLeft = canvasLeft.getContext('2d');
         const ctxRight = canvasRight.getContext('2d');
-        
+
         ctxLeft.fillStyle = '#1a1a2e';
         ctxLeft.fillRect(0, 0, canvasLeft.width, canvasLeft.height);
         ctxLeft.fillStyle = 'red';
         ctxLeft.font = '16px Arial';
         ctxLeft.fillText('Error loading data file!', 20, 40);
         ctxLeft.fillText('Check console for details', 20, 65);
-        
+
         ctxRight.fillStyle = '#1a1a2e';
         ctxRight.fillRect(0, 0, canvasRight.width, canvasRight.height);
         ctxRight.fillStyle = 'red';
@@ -208,7 +188,7 @@ async function loadCSV(filePath) {
 
 function setupEventListeners() {
     // Year controls
-    yearSlider.addEventListener('input', (e) => {
+    yearSlider.addEventListener('input', e => {
         currentYear = years[parseInt(e.target.value)];
         yearDisplay.textContent = currentYear;
         updateMaps();
@@ -238,12 +218,12 @@ function setupEventListeners() {
     });
 
     // Map slider
-    mapContainer.addEventListener('mousedown', (e) => {
+    mapContainer.addEventListener('mousedown', e => {
         isDragging = true;
         updateSliderPosition(e);
     });
 
-    document.addEventListener('mousemove', (e) => {
+    document.addEventListener('mousemove', e => {
         if (isDragging) {
             updateSliderPosition(e);
         }
@@ -254,13 +234,13 @@ function setupEventListeners() {
     });
 
     // Touch events
-    mapContainer.addEventListener('touchstart', (e) => {
+    mapContainer.addEventListener('touchstart', e => {
         isDragging = true;
         updateSliderPosition(e.touches[0]);
         e.preventDefault();
     });
 
-    document.addEventListener('touchmove', (e) => {
+    document.addEventListener('touchmove', e => {
         if (isDragging) {
             updateSliderPosition(e.touches[0]);
             e.preventDefault();
@@ -276,7 +256,7 @@ function updateSliderPosition(e) {
     const rect = mapContainer.getBoundingClientRect();
     const x = e.clientX - rect.left;
     sliderPosition = Math.max(0, Math.min(100, (x / rect.width) * 100));
-    
+
     sliderLine.style.left = `${sliderPosition}%`;
     rightMapContainer.style.clipPath = `inset(0 0 0 ${sliderPosition}%)`;
 }
@@ -287,42 +267,50 @@ function updateYearButtons() {
     nextYearBtn.disabled = idx === years.length - 1;
 }
 
+// gray → white color scale
 function getColor(value) {
-  const min = 0.1;
-  const max = 1.5;
-  const t = Math.max(0, Math.min(1, (value - min) / (max - min)));
+    const min = 0.1;
+    const max = 1.5;
+    const t = Math.max(0, Math.min(1, (value - min) / (max - min)));
 
-  // low = gray (#808080), high = white (#FFFFFF)
-  const low = { r: 128, g: 128, b: 128 };  // gray
-  const high = { r: 255, g: 255, b: 255 }; // white
+    const low = { r: 128, g: 128, b: 128 };
+    const high = { r: 255, g: 255, b: 255 };
 
-  const r = Math.round(low.r + (high.r - low.r) * t);
-  const g = Math.round(low.g + (high.g - low.g) * t);
-  const b = Math.round(low.b + (high.b - low.b) * t);
+    const r = Math.round(low.r + (high.r - low.r) * t);
+    const g = Math.round(low.g + (high.g - low.g) * t);
+    const b = Math.round(low.b + (high.b - low.b) * t);
 
-  return `rgb(${r}, ${g}, ${b})`;
+    return `rgb(${r}, ${g}, ${b})`;
 }
 
-
+// compute averages per year per scenario (ssp126, ssp245)
 function computeYearlyAverages() {
-    const sums = {};
-    const counts = {};
+    const sums = { ssp126: {}, ssp245: {} };
+    const counts = { ssp126: {}, ssp245: {} };
 
     data.forEach(d => {
-        if (!sums[d.year]) {
-            sums[d.year] = 0;
-            counts[d.year] = 0;
+        const scen = (d.scenario || '').toLowerCase();
+        let key = null;
+        if (scen.includes('126')) key = 'ssp126';
+        else if (scen.includes('245')) key = 'ssp245';
+        if (!key) return;
+
+        const y = d.year;
+        if (!sums[key][y]) {
+            sums[key][y] = 0;
+            counts[key][y] = 0;
         }
-        sums[d.year] += d.pr_mm_day;
-        counts[d.year] += 1;
+        sums[key][y] += d.pr_mm_day;
+        counts[key][y] += 1;
     });
 
     yearlyAverages = years
-        .filter(y => sums[y] !== undefined)
         .map(y => ({
             year: y,
-            avg: sums[y] / counts[y]
-        }));
+            ssp126: sums.ssp126[y] !== undefined ? sums.ssp126[y] / counts.ssp126[y] : null,
+            ssp245: sums.ssp245[y] !== undefined ? sums.ssp245[y] / counts.ssp245[y] : null
+        }))
+        .filter(d => d.ssp126 !== null || d.ssp245 !== null);
 }
 
 function drawLineChart() {
@@ -348,9 +336,15 @@ function drawLineChart() {
     const minYear = yearlyAverages[0].year;
     const maxYear = yearlyAverages[yearlyAverages.length - 1].year;
 
-    let minVal = Math.min(...yearlyAverages.map(d => d.avg));
-    let maxVal = Math.max(...yearlyAverages.map(d => d.avg));
+    const allVals = [];
+    yearlyAverages.forEach(d => {
+        if (d.ssp126 !== null) allVals.push(d.ssp126);
+        if (d.ssp245 !== null) allVals.push(d.ssp245);
+    });
+    if (allVals.length === 0) return;
 
+    let minVal = Math.min(...allVals);
+    let maxVal = Math.max(...allVals);
     if (minVal === maxVal) {
         minVal *= 0.9;
         maxVal *= 1.1;
@@ -367,9 +361,9 @@ function drawLineChart() {
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(x0, y0);
-    ctx.lineTo(x1, y0); // x-axis
+    ctx.lineTo(x1, y0);
     ctx.moveTo(x0, y0);
-    ctx.lineTo(x0, y1); // y-axis
+    ctx.lineTo(x0, y1);
     ctx.stroke();
 
     // Y ticks
@@ -393,7 +387,7 @@ function drawLineChart() {
         ctx.stroke();
     }
 
-    // X labels (each year)
+    // X labels
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
     ctx.fillStyle = '#9ca3af';
@@ -402,27 +396,41 @@ function drawLineChart() {
         ctx.fillText(d.year, x, y0 + 4);
     });
 
-    // Line
-    ctx.strokeStyle = '#38bdf8';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    yearlyAverages.forEach((d, i) => {
-        const x = xScale(d.year);
-        const y = yScale(d.avg);
-        if (i === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-    });
-    ctx.stroke();
-
-    // Points
-    ctx.fillStyle = '#38bdf8';
-    yearlyAverages.forEach(d => {
-        const x = xScale(d.year);
-        const y = yScale(d.avg);
+    function drawScenarioLine(prop, color) {
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.arc(x, y, 3, 0, 2 * Math.PI);
-        ctx.fill();
-    });
+        let started = false;
+
+        yearlyAverages.forEach(d => {
+            const val = d[prop];
+            if (val === null) return;
+            const x = xScale(d.year);
+            const y = yScale(val);
+            if (!started) {
+                ctx.moveTo(x, y);
+                started = true;
+            } else {
+                ctx.lineTo(x, y);
+            }
+        });
+        if (started) ctx.stroke();
+
+        ctx.fillStyle = color;
+        yearlyAverages.forEach(d => {
+            const val = d[prop];
+            if (val === null) return;
+            const x = xScale(d.year);
+            const y = yScale(val);
+            ctx.beginPath();
+            ctx.arc(x, y, 3, 0, 2 * Math.PI);
+            ctx.fill();
+        });
+    }
+
+    // Draw both scenarios
+    drawScenarioLine('ssp126', '#38bdf8'); // blue/cyan
+    drawScenarioLine('ssp245', '#f97316'); // orange
 
     // Title
     ctx.fillStyle = 'white';
@@ -430,34 +438,47 @@ function drawLineChart() {
     ctx.textBaseline = 'top';
     ctx.font = '14px Arial';
     ctx.fillText('Average precipitation (mm/day) by year', x0, paddingTop - 22);
-}
 
+    // Legend
+    const legendX = x1 - 140;
+    const legendY = y1 - 20;
+
+    ctx.font = '12px Arial';
+    ctx.textBaseline = 'middle';
+
+    ctx.fillStyle = '#38bdf8';
+    ctx.fillRect(legendX, legendY, 20, 3);
+    ctx.fillStyle = '#e5e7eb';
+    ctx.fillText('SSP126', legendX + 30, legendY + 1);
+
+    ctx.fillStyle = '#f97316';
+    ctx.fillRect(legendX, legendY + 18, 20, 3);
+    ctx.fillStyle = '#e5e7eb';
+    ctx.fillText('SSP245', legendX + 30, legendY + 19);
+}
 
 function drawMap(canvas, scenario) {
     if (!canvas) {
         console.error('Canvas not found');
         return;
     }
-    
+
     const ctx = canvas.getContext('2d');
     const width = canvas.width;
     const height = canvas.height;
-    
-    // Clear canvas
+
     ctx.fillStyle = '#1a1a2e';
     ctx.fillRect(0, 0, width, height);
-    
-    // Draw world map image if loaded
+
     if (mapImageLoaded && worldMapImage) {
-        ctx.globalAlpha = 0.5; // Make the map semi-transparent
+        ctx.globalAlpha = 0.5;
         ctx.drawImage(worldMapImage, 0, 0, width, height);
-        ctx.globalAlpha = 1.0; // Reset alpha
+        ctx.globalAlpha = 1.0;
     }
-    
-    // Filter data
+
     const filteredData = data.filter(d => d.year === currentYear && d.scenario === scenario);
     console.log(`Drawing ${scenario} for ${currentYear}:`, filteredData.length, 'points');
-    
+
     if (filteredData.length === 0) {
         console.warn('No data to display for', scenario, currentYear);
         ctx.fillStyle = 'white';
@@ -465,32 +486,23 @@ function drawMap(canvas, scenario) {
         ctx.fillText(`No data for ${scenario} ${currentYear}`, 20, 60);
         return;
     }
-    
+
     // Draw data points with transparency
-    // Draw data points with transparency
-// Draw data points with transparency
-filteredData.forEach(point => {
-    let lon = point.lon;
+    filteredData.forEach(point => {
+        let lon = point.lon;
+        if (lon > 180) lon -= 360;
 
-    // If data uses 0–360 longitudes, convert to -180–180
-    if (lon > 180) {
-        lon -= 360;
-    }
+        const x = ((lon + 180) / 360) * width;
+        const y = ((90 - point.lat) / 180) * height;
+        const size = Math.max(1, width / 288);
 
-    const x = ((lon + 180) / 360) * width;      // -180 → 0, 0 → mid, +180 → width
-    const y = ((90 - point.lat) / 180) * height; // +90 → top, -90 → bottom
-    const size = Math.max(1, width / 288);
+        const color = getColor(point.pr_mm_day);
+        const transparentColor = color.replace('rgb', 'rgba').replace(')', ', 0.25)');
 
-    const color = getColor(point.pr_mm_day);
-    const transparentColor = color.replace('rgb', 'rgba').replace(')', ', 0.25)');
+        ctx.fillStyle = transparentColor;
+        ctx.fillRect(x - size / 2, y - size / 2, size, size);
+    });
 
-    ctx.fillStyle = transparentColor;
-    ctx.fillRect(x - size / 2, y - size / 2, size, size);
-});
-
-
-    
-    // Draw scenario label
     ctx.fillStyle = 'white';
     ctx.font = 'bold 24px Arial';
     ctx.shadowColor = 'rgba(0,0,0,0.8)';
@@ -514,7 +526,6 @@ function drawColorScale() {
     }
 }
 
-// Initialize year buttons
 if (prevYearBtn && nextYearBtn) {
     updateYearButtons();
 }
