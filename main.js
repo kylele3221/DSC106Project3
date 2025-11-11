@@ -34,6 +34,7 @@
 
   const projection = d3.geoNaturalEarth1()
     .fitExtent([[PAD, PAD], [W - PAD, H - PAD]], {type:"Sphere"});
+
   const geoPath = d3.geoPath(projection);
 
   const [worldTopo, rowsRaw] = await Promise.all([
@@ -56,6 +57,7 @@
   );
 
   const countries = topojson.feature(worldTopo, worldTopo.objects.countries);
+
   baseSvg.append("path")
     .attr("d", geoPath({type:"Sphere"}))
     .attr("fill", "#0c152a");
@@ -145,7 +147,7 @@
 
   drawLegend(globalExtent);
 
-  const yearSlider = d3.select("#yearSlider")
+  const slider    = d3.select("#yearSlider")
     .attr("min", 0)
     .attr("max", Math.max(0, years.length - 1))
     .attr("value", 0);
@@ -154,23 +156,22 @@
   const ptSize    = d3.select("#ptSize");
   const ptAlpha   = d3.select("#ptAlpha");
   const playBtn   = d3.select("#play");
-  const swipeSlider = d3.select("#swipeSlider");
 
-  let playing = false;
-  let timer   = null;
+  let playing    = false;
+  let timer      = null;
   const frameDelay = 900;
 
   function currentYear() {
-    return years[+yearSlider.node().value];
+    return years[+slider.node().value];
   }
 
   function setYearIndex(i) {
-    yearSlider.node().value = Math.max(0, Math.min(years.length - 1, i));
+    slider.node().value = Math.max(0, Math.min(years.length - 1, i));
     updateYear();
   }
 
   function loop() {
-    setYearIndex((+yearSlider.node().value + 1) % years.length);
+    setYearIndex((+slider.node().value + 1) % years.length);
     timer = setTimeout(loop, frameDelay);
   }
 
@@ -184,7 +185,7 @@
     drawBoth(currentYear());
   });
 
-  yearSlider.on("input", updateYear);
+  slider.on("input", updateYear);
   ptSize.on("input", () => drawBoth(currentYear()));
   ptAlpha.on("input", () => drawBoth(currentYear()));
 
@@ -195,34 +196,22 @@
     else clearTimeout(timer);
   });
 
-  let splitX = W / 2;
+  const visNode = document.getElementById("vis");
+
+  function bounds() {
+    return visNode.getBoundingClientRect();
+  }
+
+  let splitX = Math.round(W / 2);
 
   function setSplit(px) {
     splitX = Math.max(0, Math.min(W, px));
     canvasB.style.clipPath = `inset(0 0 0 ${splitX}px)`;
     divider.style.left = splitX + "px";
     handle.style.left  = splitX + "px";
-
-    const pctVisibleRight = ((W - splitX) / W) * 100;
-    swipeSlider.property("value", pctVisibleRight);
   }
 
-  function setFromPercent(pct) {
-    const visibleWidth = (pct / 100) * W;
-    const leftClip = W - visibleWidth;
-    setSplit(leftClip);
-  }
-
-  swipeSlider.on("input", function() {
-    const pct = +this.value;
-    setFromPercent(pct);
-  });
-
-  const visNode = document.getElementById("vis");
-
-  function bounds() {
-    return visNode.getBoundingClientRect();
-  }
+  setSplit(Math.round(W / 2));
 
   vis.on("pointerdown", ev => {
     move(ev);
@@ -236,7 +225,7 @@
   function move(ev) {
     const r = bounds();
     const mx = (ev.clientX - r.left) * (W / r.width);
-    setSplit(mx);
+    setSplit(Math.round(mx));
   }
 
   visNode.addEventListener("mousemove", ev => {
@@ -245,8 +234,7 @@
     const my = (ev.clientY - r.top)  * (H / r.height);
 
     const yr = currentYear();
-    const sideA = mx < splitX;
-
+    const sideA = mx <= splitX;
     const scen = sideA ? selA.property("value") : selB.property("value");
     const rowsSide = (byScenarioYear.get(scen)?.get(yr)) || [];
 
@@ -328,5 +316,4 @@
   }
 
   updateYear();
-  setFromPercent(50);
 })();
