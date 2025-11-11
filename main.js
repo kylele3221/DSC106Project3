@@ -301,17 +301,24 @@ function drawMap(canvas, scenario) {
     
     // Draw data points with transparency
     filteredData.forEach(point => {
-        const x = (point.lon / 360) * width;
-        const y = ((90 - point.lat) / 180) * height;
-        const size = Math.max(1, width / 400); // Made points much smaller (was 144, now 288)
-        
-        const color = getColor(point.pr_mm_day);
-        // Add transparency (0.7 = 70% opacity - higher so colors show better)
-        const transparentColor = color.replace('rgb', 'rgba').replace(')', ', 0.7)');
-        
-        ctx.fillStyle = transparentColor;
-        ctx.fillRect(x - size/2, y - size/2, size, size);
-    });
+    let lon = point.lon;
+
+    // If data uses 0–360 longitudes, convert to -180–180
+    if (lon > 180) {
+        lon -= 360;
+    }
+
+    const x = ((lon + 180) / 360) * width;      // -180 → 0, 0 → mid, +180 → width
+    const y = ((90 - point.lat) / 180) * height; // +90 → top, -90 → bottom
+    const size = Math.max(1, width / 288);
+
+    const color = getColor(point.pr_mm_day);
+    const transparentColor = color.replace('rgb', 'rgba').replace(')', ', 0.7)');
+
+    ctx.fillStyle = transparentColor;
+    ctx.fillRect(x - size / 2, y - size / 2, size, size);
+});
+
     
     // Draw scenario label
     ctx.fillStyle = 'white';
