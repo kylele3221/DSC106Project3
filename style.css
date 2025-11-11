@@ -210,3 +210,9 @@ canvas {
     font-size: 14px;
     flex-shrink: 0;
 }
+
+.brush-layer .selection {
+  stroke: #fff;
+  fill: rgba(255, 255, 255, 0.2);
+  stroke-width: 1.5;
+}
