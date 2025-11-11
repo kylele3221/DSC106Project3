@@ -20,6 +20,11 @@ let yearSlider, yearDisplay, prevYearBtn, nextYearBtn, colorScale, lineCanvas;
 // Derived data
 let yearlyAverages = [];
 
+// Line chart hover data
+let linePoints = [];
+let hoverPoint = null;
+let tooltip = null;
+
 // Wait for DOM to load
 document.addEventListener('DOMContentLoaded', function () {
     console.log('DOM loaded, initializing...');
@@ -36,6 +41,12 @@ document.addEventListener('DOMContentLoaded', function () {
     nextYearBtn = document.getElementById('nextYear');
     colorScale = document.getElementById('colorScale');
     lineCanvas = document.getElementById('lineCanvas');
+
+    // Create tooltip div
+    tooltip = document.createElement('div');
+    tooltip.id = 'tooltip';
+    tooltip.style.display = 'none';
+    document.body.appendChild(tooltip);
 
     // Initialize
     init();
@@ -254,6 +265,16 @@ function setupEventListeners() {
     document.addEventListener('touchend', () => {
         isDragging = false;
     });
+
+    // Line chart hover events
+    if (lineCanvas) {
+        lineCanvas.addEventListener('mousemove', handleLineHover);
+        lineCanvas.addEventListener('mouseleave', () => {
+            hoverPoint = null;
+            hideTooltip();
+            drawLineChart();
+        });
+    }
 }
 
 function updateSliderPosition(e) {
@@ -333,6 +354,9 @@ function drawLineChart() {
     const width = lineCanvas.width;
     const height = lineCanvas.height;
 
+    // reset stored points for hit detection
+    linePoints = [];
+
     ctx.fillStyle = '#1a1a2e';
     ctx.fillRect(0, 0, width, height);
 
@@ -409,7 +433,7 @@ function drawLineChart() {
         ctx.fillText(d.year, x, y0 + 4);
     });
 
-    function drawScenarioLine(prop, color) {
+    function drawScenarioLine(prop, color, scenarioLabel) {
         ctx.strokeStyle = color;
         ctx.lineWidth = 2;
         ctx.beginPath();
@@ -420,6 +444,16 @@ function drawLineChart() {
             if (val === null) return;
             const x = xScale(d.year);
             const y = yScale(val);
+
+            // add this point to the hit-test list
+            linePoints.push({
+                x,
+                y,
+                year: d.year,
+                scenario: scenarioLabel,
+                value: val
+            });
+
             if (!started) {
                 ctx.moveTo(x, y);
                 started = true;
@@ -442,8 +476,8 @@ function drawLineChart() {
     }
 
     // Draw both scenarios
-    drawScenarioLine('ssp126', '#38bdf8'); // blue/cyan
-    drawScenarioLine('ssp245', '#f97316'); // orange
+    drawScenarioLine('ssp126', '#38bdf8', 'SSP126'); // blue/cyan
+    drawScenarioLine('ssp245', '#f97316', 'SSP245'); // orange
 
     // Title
     ctx.fillStyle = 'white';
@@ -468,6 +502,19 @@ function drawLineChart() {
     ctx.fillRect(legendX, legendY + 18, 20, 3);
     ctx.fillStyle = '#e5e7eb';
     ctx.fillText('SSP245', legendX + 30, legendY + 19);
+
+    // Highlight hovered point, if any
+    if (hoverPoint) {
+        ctx.save();
+        ctx.fillStyle = '#fef3c7';
+        ctx.strokeStyle = '#fbbf24';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(hoverPoint.x, hoverPoint.y, 6, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+    }
 }
 
 function drawMap(canvas, scenario) {
@@ -588,4 +635,59 @@ function drawColorScale() {
 
 if (prevYearBtn && nextYearBtn) {
     updateYearButtons();
+}
+
+// ==== Tooltip + hover helpers ====
+
+function handleLineHover(e) {
+    if (!lineCanvas || linePoints.length === 0) return;
+
+    const rect = lineCanvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    let nearest = null;
+    let minDist = Infinity;
+    const maxRadius = 12; // hover radius in pixels
+
+    linePoints.forEach(p => {
+        const dx = p.x - x;
+        const dy = p.y - y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < minDist) {
+            minDist = dist;
+            nearest = p;
+        }
+    });
+
+    if (nearest && minDist <= maxRadius) {
+        hoverPoint = nearest;
+        showTooltip(
+            nearest,
+            e.clientX + 10,
+            e.clientY + 10
+        );
+    } else {
+        hoverPoint = null;
+        hideTooltip();
+    }
+
+    drawLineChart();
+}
+
+function showTooltip(p, pageX, pageY) {
+    if (!tooltip) return;
+    tooltip.style.display = 'block';
+    tooltip.style.left = pageX + 'px';
+    tooltip.style.top = pageY + 'px';
+    tooltip.innerHTML = `
+        <div><strong>Year:</strong> ${p.year}</div>
+        <div><strong>Scenario:</strong> ${p.scenario}</div>
+        <div><strong>Precip:</strong> ${p.value.toFixed(3)} mm/day</div>
+    `;
+}
+
+function hideTooltip() {
+    if (!tooltip) return;
+    tooltip.style.display = 'none';
 }
