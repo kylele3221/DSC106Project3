@@ -1,56 +1,43 @@
-<!doctype html>
-<html lang="en">
+<!DOCTYPE html>
+<html>
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>D3 Swipe Compare (One CSV, Two Scenarios)</title>
-  <link rel="stylesheet" href="styles.css" />
+  <meta charset="utf-8">
+  <title>SSP Precipitation Swipe</title>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="wrap">
-    <div class="panel">
-      <h1>Swipe Compare — Two Scenarios from One CSV</h1>
-      <div class="controls">
-        <label>Left:
-          <select id="selA"></select>
-        </label>
-        <label>Right:
-          <select id="selB"></select>
-        </label>
-        <button class="btn" id="play">▶ Play</button>
-        <label>Year:&nbsp;<strong id="yearLabel">—</strong></label>
-        <input id="yearSlider" type="range" min="0" max="1" step="1" value="0" />
-        <span class="spacer"></span>
-        <label>Point size:
-          <input id="ptSize" type="range" min="0.5" max="3.5" step="0.5" value="1.6" />
-        </label>
-        <label style="margin-left:8px;">Opacity:
-          <input id="ptAlpha" type="range" min="0.1" max="1" step="0.1" value="0.85" />
-        </label>
-      </div>
-
-      <div class="vis" id="vis">
-        <div class="badge badgeA" id="labelA">Left</div>
-        <div class="badge badgeB" id="labelB">Right</div>
-        <div class="tooltip" id="tooltip"></div>
-
-        <svg
-          class="basemap"
-          id="basemap"
-          viewBox="0 0 1000 560"
-          role="img"
-          aria-label="World basemap">
-        </svg>
-
-        <!-- canvases injected below -->
-        <div class="divider" id="divider"></div>
-        <div class="handle" id="handle"></div>
-      </div>
-    </div>
+  <div id="controls">
+    <label>
+      Scenario A
+      <select id="scenarioA">
+        <option value="ssp126">ssp126</option>
+        <option value="ssp245">ssp245</option>
+      </select>
+    </label>
+    <label>
+      Scenario B
+      <select id="scenarioB">
+        <option value="ssp245">ssp245</option>
+        <option value="ssp126">ssp126</option>
+      </select>
+    </label>
+    <label>
+      Year
+      <input id="yearSlider" type="range">
+      <span id="yearLabel"></span>
+    </label>
+    <button id="play">Play</button>
+    <span id="status"></span>
   </div>
 
-  <script src="https://unpkg.com/d3@7"></script>
-  <script src="https://unpkg.com/topojson-client@3"></script>
-  <script src="main.js"></script>
+  <div id="map-container">
+    <canvas id="map-bottom"></canvas>
+    <canvas id="map-top"></canvas>
+    <div id="swipe-handle"></div>
+    <input id="swipe" type="range" min="0" max="100" value="50">
+  </div>
+
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
