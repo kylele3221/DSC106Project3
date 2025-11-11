@@ -97,6 +97,18 @@ function resizeCanvas() {
         updateMaps();
     }
 }
+function resizeChart() {
+    if (!lineCanvas) return;
+    const width = lineCanvas.clientWidth;
+    const height = lineCanvas.clientHeight;
+    lineCanvas.width = width;
+    lineCanvas.height = height;
+
+    if (yearlyAverages.length > 0) {
+        drawLineChart();
+    }
+}
+
 
 // Load world map image
 function loadWorldMapImage() {
