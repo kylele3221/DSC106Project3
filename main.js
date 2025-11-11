@@ -302,6 +302,7 @@ function drawMap(canvas, scenario) {
     
     // Draw data points with transparency
     // Draw data points with transparency
+// Draw data points with transparency
 filteredData.forEach(point => {
     let lon = point.lon;
 
@@ -310,21 +311,15 @@ filteredData.forEach(point => {
         lon -= 360;
     }
 
-    const x = ((lon + 180) / 360) * width;       // -180 → 0, 0 → mid, +180 → width
+    const x = ((lon + 180) / 360) * width;      // -180 → 0, 0 → mid, +180 → width
     const y = ((90 - point.lat) / 180) * height; // +90 → top, -90 → bottom
-
-    // Smaller dots so they don't form a solid layer
-    const size = Math.max(0.5, width / 500);
+    const size = Math.max(1, width / 288);
 
     const color = getColor(point.pr_mm_day);
     const transparentColor = color.replace('rgb', 'rgba').replace(')', ', 0.25)');
 
     ctx.fillStyle = transparentColor;
-
-    // Draw circles instead of squares
-    ctx.beginPath();
-    ctx.arc(x, y, size / 2, 0, 2 * Math.PI);
-    ctx.fill();
+    ctx.fillRect(x - size / 2, y - size / 2, size, size);
 });
 
 
