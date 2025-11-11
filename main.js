@@ -233,9 +233,10 @@ function getColor(value) {
     const max = 1.5;
     const normalized = Math.max(0, Math.min(1, (value - min) / (max - min)));
     
-    const r = Math.floor(normalized * 255);
-    const b = Math.floor((1 - normalized) * 255);
-    const g = Math.floor(128 * (1 - Math.abs(normalized - 0.5) * 2));
+    // White (255, 255, 255) to Blue (0, 0, 255)
+    const r = Math.floor(255 * (1 - normalized));
+    const g = Math.floor(255 * (1 - normalized));
+    const b = 255; // Always full blue
     
     return `rgb(${r}, ${g}, ${b})`;
 }
