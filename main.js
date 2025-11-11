@@ -314,7 +314,8 @@ function drawMap(canvas, scenario) {
     const size = Math.max(1, width / 288);
 
     const color = getColor(point.pr_mm_day);
-    const transparentColor = color.replace('rgb', 'rgba').replace(')', ', 0.7)');
+    const transparentColor = color.replace('rgb', 'rgba').replace(')', ', 0.25)');
+
 
     ctx.fillStyle = transparentColor;
     ctx.fillRect(x - size / 2, y - size / 2, size, size);
