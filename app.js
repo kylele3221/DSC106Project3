@@ -14,7 +14,7 @@
   const handle  = document.getElementById("handle");
   const tooltip = d3.select("#tooltip");
 
-  // canvases
+  // canvases (left/right)
   const canvasA = vis.append("canvas").classed("layer layerA", true)
     .attr("width", W).attr("height", H).style("width", W+"px").style("height", H+"px").node();
   const canvasB = vis.append("canvas").classed("layer layerB", true)
@@ -51,11 +51,16 @@
 
   // basemap
   const countries = topojson.feature(worldTopo, worldTopo.objects.countries);
-  baseSvg.append("path").attr("d", geoPath({type:"Sphere"})).attr("fill","#ffffff");
+  baseSvg.append("path")
+    .attr("d", geoPath({type:"Sphere"}))
+    .attr("fill","#ffffff");
   baseSvg.append("g").selectAll("path")
     .data(countries.features).join("path")
-    .attr("d", geoPath).attr("fill","#f7f9fc")
-    .attr("stroke","#d8dde6").attr("stroke-width",0.5).attr("vector-effect","non-scaling-stroke");
+    .attr("d", geoPath)
+    .attr("fill","#f7f9fc")
+    .attr("stroke","#d8dde6")
+    .attr("stroke-width",0.5)
+    .attr("vector-effect","non-scaling-stroke");
 
   // years & scenarios
   const years = Array.from(new Set(rows.map(d => d.year))).sort((a,b)=>a-b);
@@ -63,8 +68,10 @@
   const byScenarioYear = d3.group(rows, d => d.scenario, d => d.year);
 
   // populate selects
-  selA.selectAll("option").data(scenarios).join("option").attr("value", d=>d).text(d=>d);
-  selB.selectAll("option").data(scenarios).join("option").attr("value", d=>d).text(d=>d);
+  selA.selectAll("option").data(scenarios).join("option")
+    .attr("value", d=>d).text(d=>d);
+  selB.selectAll("option").data(scenarios).join("option")
+    .attr("value", d=>d).text(d=>d);
   selA.property("value", scenarios[0] ?? "");
   selB.property("value", scenarios[1] ?? scenarios[0] ?? "");
   labelA.text(selA.property("value") || "Left");
@@ -74,20 +81,20 @@
   const globalExtent = d3.extent(rows, d => d.value);
   const color = d3.scaleSequential().domain(globalExtent).interpolator(d3.interpolateTurbo);
 
-  // legend (bottom-right of map)
-  // legend (separate SVG above the map)
+  // ===== LEGEND (in separate SVG under the map) =====
   const legendSvg = d3.select("#legendSvg");
   const legendG   = legendSvg.append("g").attr("transform","translate(10,20)");
 
   drawLegend(globalExtent);
 
   function drawLegend(domain) {
-    // clear previous contents (including old gradients)
+    // clear previous legend content
     legendSvg.selectAll("defs").remove();
     legendG.selectAll("*").remove();
 
     const defs = legendSvg.append("defs");
-    const id = "grad" + Math.random().toString(36).slice(2);
+    const id = "grad-" + Math.random().toString(36).slice(2);
+
     const grad = defs.append("linearGradient")
       .attr("id", id)
       .attr("x1","0%").attr("x2","100%");
@@ -99,7 +106,8 @@
     });
 
     legendG.append("rect")
-      .attr("width",180).attr("height",12)
+      .attr("width",180)
+      .attr("height",12)
       .attr("fill",`url(#${id})`)
       .attr("stroke","#cfd6df");
 
@@ -112,13 +120,17 @@
       .selectAll("text").attr("fill","#5a6473");
 
     legendG.append("text")
-      .attr("x",0).attr("y",-6)
+      .attr("x",0)
+      .attr("y",-6)
       .attr("fill","#5a6473")
       .text("pr (mm/day)");
   }
 
   // ----- UI -----
-  const slider = d3.select("#yearSlider").attr("min",0).attr("max",Math.max(0,years.length-1)).attr("value",0);
+  const slider = d3.select("#yearSlider")
+    .attr("min",0)
+    .attr("max",Math.max(0,years.length-1))
+    .attr("value",0);
   const yearLabel = d3.select("#yearLabel");
   const ptSize = d3.select("#ptSize");
   const ptAlpha = d3.select("#ptAlpha");
@@ -221,7 +233,7 @@
 
   function updateYear(){
     const yr = currentYear();
-    d3.select("#yearLabel").text(yr);
+    yearLabel.text(yr);
     placeTsMarker(yr);
     drawBoth(yr);
   }
@@ -324,16 +336,8 @@
   function hideTsTip(){ tsTip.style("opacity", 0); }
   function placeTsMarker(yr){ marker.attr("x1", xTS(yr)).attr("x2", xTS(yr)); }
 
-  // keep chart in sync with existing UI
+  // keep chart in sync with year slider
   d3.select("#yearSlider").on("input.ts", () => placeTsMarker(currentYear()));
-  d3.select("#ts").on("mousemove", (ev) => {
-    const pt = d3.pointer(ev, tsG.node());
-    const yr = Math.round(xTS.invert(pt[0]));
-    if (years.includes(yr)) {
-      document.getElementById("yearSlider").value = years.indexOf(yr);
-      placeTsMarker(yr);
-    }
-  });
 
   // init
   renderTS();
