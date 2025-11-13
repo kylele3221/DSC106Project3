@@ -9,7 +9,30 @@
 <body>
   <div class="wrap">
     <div class="panel">
-      <h1>Swipe Compare — Two Scenarios from One CSV</h1>
+      <h2>How does precipitation variability change between SSP1-2.6 and SSP2-4.5 scenarios?</h1>
+
+      <h1>
+        What is SSPs? What is the difference between SSP1-2.6 and SSP2-4.5?
+      </h1>
+
+      <p>
+        In climate modeling, SSP stands for Shared SocioEconomic Pathway. Each SSP scenario has two parts:
+      </p>
+      <p>
+        - A socioeconomic storyline (SSP1, SSP2, SSP3, etc.)
+      </p>
+      <p>
+        - A forcing level by 2100 (the number after the ~ , like 2.6, 4.5)
+      </p>
+
+      <p>
+        Together they describe a future world + its resulting climate impact.
+      </p>
+      <p>
+        SSP1-2.6 is the best-case realistic scenario, where we focus on green technology, education, health, and sustainability. Population growth will be low, and our society will follow green policies to reduce fossil fuels. SSP2-4.5 is a scenario where current policies continue, emissions stabilize, but don't drop, and there are some slow green transitions. In short, SSP2-4.5 shows how our world will be if we continue to live like we do.
+      </p>
+
+      <p>Below, we have created an interactive world map showing how precipitation rates change between SSP1-2.6 and SSP2-4.5. Feel free to hover, toggle, and slide over the different interactive components of the map.</p>
 
       <!-- Controls -->
       <div class="controls">
@@ -61,6 +84,13 @@
         <div id="tsTip" class="tooltip" style="opacity:0; position:absolute;"></div>
       </div>
       <section id="overview" style="margin-top:32px;">
+        
+        <h2>Design Decision Rationale</h2>
+
+        <p>
+          Our group decided to improve our chosen visualization from our checkpoint. Our checkpoint initially showed two SSPs side by side and by moving a toggle, viewers would be able to see the precipitation rates change for both SSPs. However, we felt that this wasn’t interactive enough, and by putting the two visualizations side by side, it would be hard to directly compare a specific part of the map. So, we decided to use a slider, and overlap the two SSP scenarios. We also made the colors of the visualization more vibrant and variant reflecting the feedback from our checkpoint that our visualization difference is not super apparent. Along with our map visualization, we decided to add in a line graph showing both SSP scenarios, with their average precipitation rates per every 5 years, just to add an extra interactive element which can provide a very straightforward view of the whole data. We also consider creating a selection tool like we did in Lab 6 on top of the map, but decided not to because the element overlapped with our point size technique.
+        </p>
+        
         <h2>Overview of the Development Process</h2>
 
         <p>
@@ -78,11 +108,15 @@
         </ul>
 
         <p>
-          Since all the aforementioned aspects are interconnected in their functionality, linking them together (and performing multiple debugging iterations) to ensure that the interactive visualization worked as intended took the most time (approximately 6 hours combined).
+          Since all the aforementioned aspects are interconnected in their functionality, linking them together (and performing multiple debugging iterations) to ensure that the interactive visualization worked as intended took the most time (approximately 8 hours combined).
         </p>
 
         <p>
           In the final stage, the finishing touches, including CSS modifications and write-ups, were discussed and implemented to make our visualization accessible and intuitive to understand for the average reader.
+        </p>
+
+        <p>
+          Project by Minyoung Kim, Kyle Le, Tanisha Kumar
         </p>
       </section>
     </div>
