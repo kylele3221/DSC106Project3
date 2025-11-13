@@ -60,6 +60,31 @@
              role="img" aria-label="Timeseries of precipitation"></svg>
         <div id="tsTip" class="tooltip" style="opacity:0; position:absolute;"></div>
       </div>
+      <section id="overview" style="margin-top:32px;">
+        <h2>Overview of the Development Process</h2>
+
+        <p>
+          Our development process involved first getting familiarized with our CMIP-6 dataset. This included exploring the relevant features, interpreting variables, and querying the dataset in order to lead us towards our driving question — how does the global mean precipitation change from 2015 to 2100 according to the ssp126 model (i.e., assuming the trajectory of climate change continues as it is presently without any significant intervention) versus the ssp245 model (i.e., the best-case intervention scenario). The data were filtered to include those produced by the NCAR institution's CESM2-WACCM model. This exploration and filtering part was done by all three team members. Thoroughly understanding what dataset we were dealing with and how best to communicate the most relevant aspects of it took roughly 2 hours of group effort.
+        </p>
+
+        <p>
+          From there on, we identified potential visualization techniques to include in our interactive plot. Broadly, this included:
+        </p>
+
+        <ul>
+          <li>Adding a map with a slider overlay to contrast the difference in mean precipitation predicted by the two ssp scenarios across separate regions of the globe (effort led by Minyoung).</li>
+          <li>Dynamically updating the changes in precipitation over the map based on a timeline functionality (effort led by Kyle).</li>
+          <li>Creating a selection tool that allowed visualizing the line trends according to the two scenarios in the mean precipitation at a certain region of the map (effort led by Tanisha). However, this aspect was removed from the final version of the project for the sake of simplicity and in line with the TA’s suggestions to prioritize interpretability over complexity.</li>
+        </ul>
+
+        <p>
+          Since all the aforementioned aspects are interconnected in their functionality, linking them together (and performing multiple debugging iterations) to ensure that the interactive visualization worked as intended took the most time (approximately 6 hours combined).
+        </p>
+
+        <p>
+          In the final stage, the finishing touches, including CSS modifications and write-ups, were discussed and implemented to make our visualization accessible and intuitive to understand for the average reader.
+        </p>
+      </section>
     </div>
   </div>
 
