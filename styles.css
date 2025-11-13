@@ -73,12 +73,11 @@ svg.basemap + g path { fill:#f7f9fc; stroke:#d8dde6; }
 
 /* legend under the map */
 .legendSvg {
-  width:260px;
-  height:60px;
-  display:block;
-  margin:16px auto 65px;   /* big gap under legend so ticks are fully clear */
+  width: 260px;
+  height: 70px;          /* match the taller viewBox */
+  display: block;
+  margin: 12px auto 24px; /* center + add space above/below */
 }
-
 /* timeseries */
 #tsWrap {
   position:relative;
@@ -108,4 +107,3 @@ svg.basemap + g path { fill:#f7f9fc; stroke:#d8dde6; }
 #overview h2 {
   margin-bottom: 12px;
 }
-

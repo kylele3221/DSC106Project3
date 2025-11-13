@@ -123,6 +123,7 @@
       .attr("x",0)
       .attr("y",-6)
       .attr("fill","#5a6473")
+      .style("font-size", "14px")
       .text("pr (mm/day)");
   }
 
