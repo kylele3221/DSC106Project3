@@ -1,5 +1,0 @@
-,activity_id,institution_id,source_id,experiment_id,member_id,table_id,variable_id,grid_label,zstore,dcpp_init_year,version
-444350,ScenarioMIP,NCAR,CESM2,ssp126,r10i1p1f1,Amon,pr,gn,gs://cmip6/CMIP6/ScenarioMIP/NCAR/CESM2/ssp126/r10i1p1f1/Amon/pr/gn/v20200528/,,20200528
-444629,ScenarioMIP,NCAR,CESM2,ssp126,r11i1p1f1,Amon,pr,gn,gs://cmip6/CMIP6/ScenarioMIP/NCAR/CESM2/ssp126/r11i1p1f1/Amon/pr/gn/v20200528/,,20200528
-444937,ScenarioMIP,NCAR,CESM2,ssp126,r4i1p1f1,Amon,pr,gn,gs://cmip6/CMIP6/ScenarioMIP/NCAR/CESM2/ssp126/r4i1p1f1/Amon/pr/gn/v20200528/,,20200528
-514467,ScenarioMIP,NCAR,CESM2-WACCM,ssp126,r1i1p1f1,Amon,pr,gn,gs://cmip6/CMIP6/ScenarioMIP/NCAR/CESM2-WACCM/ssp126/r1i1p1f1/Amon/pr/gn/v20210211/,,20210211

@@ -1,54 +1,453 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Climate Data Comparison Map</title>
-    <link rel="stylesheet" href="style.css">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>D3 Swipe Compare (One CSV, Two Scenarios)</title>
+<style>
+  :root { --bg:#0b1020; --card:#121a2b; --text:#e9eef9; --muted:#9ab; }
+  body { margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--text); }
+  .wrap { max-width:1100px; margin:24px auto; padding:0 16px; }
+  .panel { background:var(--card); border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,.25); padding:16px; }
+  h1 { margin:0 0 8px 0; font-size:20px; }
+  .controls { display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin:12px 0 8px; }
+  .controls label { color:var(--muted); font-size:14px; }
+  .controls .spacer { flex:1; }
+  .btn { background:#1f2a44; border:none; color:var(--text); padding:8px 12px; border-radius:10px; cursor:pointer; font-weight:600; }
+  .btn:hover { filter:brightness(1.12); }
+  input[type="range"] { width:240px; }
+  select { background:#0d1426; color:var(--text); border:1px solid #243861; border-radius:10px; padding:6px 8px; }
+  .legend text { font-size:12px; fill:var(--muted); }
+  .vis { position:relative; user-select:none; }
+  svg.basemap { width:100%; height:auto; display:block; position:relative; z-index:0; }
+  canvas.layer { position:absolute; left:0; top:0; z-index:1; pointer-events:none; }
+  .layerB { clip-path: inset(0 0 0 var(--clipLeft, 50%)); }
+  .divider { position:absolute; top:0; height:100%; width:0; border-left:3px solid #ffffffbb; z-index:3; pointer-events:none; }
+  .handle { position:absolute; top:50%; transform:translate(-50%,-50%); z-index:4; width:34px; height:34px; background:#1f2a44; border:2px solid #fff; border-radius:50%; display:grid; place-items:center; box-shadow:0 6px 20px rgba(0,0,0,.4); pointer-events:none; }
+  .handle::before { content:"↔"; color:#fff; font-weight:700; }
+  .badge { position:absolute; top:10px; background:#0d1426; color:#e9eef9; border:1px solid #243861; border-radius:10px; padding:4px 8px; font-size:12px; z-index:5; }
+  .badgeA { left:12px; }
+  .badgeB { right:12px; }
+  .tooltip { position:absolute; pointer-events:none; background:#0d1426; color:var(--text);
+    border:1px solid #253052; border-radius:10px; padding:8px 10px; font-size:13px;
+    box-shadow:0 6px 20px rgba(0,0,0,.35); transform:translate(-50%, -120%); white-space:nowrap; z-index:6; opacity:0; }
+
+    /* === LIGHT THEME OVERRIDES === */
+  body { background:#f7f7f7; color:#0e1220; }
+  .panel { background:#e9ecef; color:inherit; border:1px solid #d8dde6; }
+  select { background:#fff; color:#0e1220; border:1px solid #cfd6df; }
+  .btn { background:#f1f4ff; color:#2130a0; border:1px solid #cfd8ff; }
+  .badge { background:#fff; color:#0e1220; border:1px solid #d8dde6; }
+  .tooltip { background:#fff; color:#0e1220; border:1px solid #d8dde6; box-shadow:0 6px 16px rgba(0,0,0,.12); }
+  .divider { border-left:3px solid rgba(0,0,0,.25); }
+  .handle { background:#fff; border-color:#111; }
+  .handle::before { color:#111; }
+  /* basemap colors (optional, softer) */
+  svg.basemap + g path { fill:#f7f9fc; stroke:#d8dde6; }
+
+  /* === timeseries styles === */
+  .timeseries { width:100%; height:auto; display:block; }
+  .axis text { fill:#5a6473; font-size:12px; }
+  .axis line, .axis path { stroke:#cfd6df; }
+  .ts-grid line { stroke:#e8ebf0; }
+  .ts-legend { font-size:12px; fill:#5a6473; }
+  .ts-marker { stroke:#111; stroke-width:2; }
+  .ts-dot { stroke:#fff; stroke-width:1.2; }
+</style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>Climate Precipitation Comparison</h1>
-            <div class="controls">
-                <div class="year-control">
-                    <span class="year-label">Year: <span id="yearDisplay">2015</span></span>
-                    <input type="range" id="yearSlider" min="0" max="17" value="0" class="slider">
-                    <div class="year-buttons">
-                        <button id="prevYear" class="btn">◀</button>
-                        <button id="nextYear" class="btn">▶</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <!-- NEW: line chart above the map -->
-        <div class="chart-container">
-            <canvas id="lineCanvas"></canvas>
-        </div>
-        <div id="mapContainer" class="map-container">
-            <div class="canvas-wrapper">
-                <canvas id="canvasLeft"></canvas>
-            </div>
-            <div id="rightMapContainer" class="right-map">
-                <div class="canvas-wrapper">
-                    <canvas id="canvasRight"></canvas>
-                </div>
-            </div>
-            <div id="sliderLine" class="slider-line">
-                <div class="slider-handle"></div>
-            </div>
-        </div>
-
-        <div class="legend">
-            <span class="legend-label">Low Precipitation</span>
-            <div id="colorScale" class="color-scale"></div>
-            <span class="legend-label">High Precipitation</span>
-        </div>
-        <div class="instruction">
-            Drag the slider to compare SSP126 (left) and SSP245 (right) scenarios
-        </div>
+<div class="wrap">
+  <div class="panel">
+    <h1>Swipe Compare — Two Scenarios from One CSV</h1>
+    <div class="controls">
+      <label>Left:
+        <select id="selA"></select>
+      </label>
+      <label>Right:
+        <select id="selB"></select>
+      </label>
+      <button class="btn" id="play">▶ Play</button>
+      <label>Year:&nbsp;<strong id="yearLabel">—</strong></label>
+      <input id="yearSlider" type="range" min="0" max="1" step="1" value="0" />
+      <span class="spacer"></span>
+      <label>Point size:
+        <input id="ptSize" type="range" min="0.5" max="3.5" step="0.5" value="1.6" />
+      </label>
+      <label style="margin-left:8px;">Opacity:
+        <input id="ptAlpha" type="range" min="0.1" max="1" step="0.1" value="0.85" />
+      </label>
     </div>
 
-    <script src="main.js"></script>
+    <svg id="legendSvg" class="legendSvg" viewBox="0 0 220 40"></svg>
+    
+    <div class="vis" id="vis">
+
+    <div class="vis" id="vis">
+      <div class="badge badgeA" id="labelA">Left</div>
+      <div class="badge badgeB" id="labelB">Right</div>
+      <div class="tooltip" id="tooltip"></div>
+
+      <svg class="basemap" id="basemap" viewBox="0 0 1000 560" role="img" aria-label="World basemap"></svg>
+      <!-- canvases injected below -->
+      <div class="divider" id="divider"></div>
+      <div class="handle" id="handle"></div>
+    </div>
+
+    <!-- ===== Timeseries (below the map) ===== -->
+    <div id="tsWrap" style="margin-top:16px; position:relative;">
+      <h2 style="margin:0 0 8px 0; font-size:16px; font-weight:600;">Global mean precipitation</h2>
+      <svg id="ts" class="timeseries" viewBox="0 0 1000 280" role="img" aria-label="Timeseries of precipitation"></svg>
+      <div id="tsTip" class="tooltip" style="opacity:0; position:absolute;"></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/d3@7"></script>
+<script src="https://unpkg.com/topojson-client@3"></script>
+<script>
+(async function() {
+  // -------- CONFIG --------
+  const CSV = "precip_5yr_cesm2waccm_ncar.csv"; // your file
+  const WORLD_URL = "https://unpkg.com/world-atlas@2/countries-110m.json";
+  const COLS = { year:"year", lat:"lat", lon:"lon", value:"pr_mm_day", scenario:"scenario" };
+  const usePerYearColorScale = false; // set true to rescale colors each year
+
+  // -------- ELEMENTS / SIZE --------
+  const vis = d3.select("#vis");
+  const baseSvg = d3.select("#basemap");
+  const W = 1000, H = 560, PAD = 8;
+
+  const divider = document.getElementById("divider");
+  const handle  = document.getElementById("handle");
+  const tooltip = d3.select("#tooltip");
+
+  // canvases (left=A, right=B)
+  const canvasA = vis.append("canvas").classed("layer layerA", true)
+    .attr("width", W).attr("height", H).style("width", W+"px").style("height", H+"px").node();
+  const canvasB = vis.append("canvas").classed("layer layerB", true)
+    .attr("width", W).attr("height", H).style("width", W+"px").style("height", H+"px").node();
+  const ctxA = canvasA.getContext("2d");
+  const ctxB = canvasB.getContext("2d");
+
+  const selA = d3.select("#selA");
+  const selB = d3.select("#selB");
+  const labelA = d3.select("#labelA");
+  const labelB = d3.select("#labelB");
+
+  // -------- PROJECTION --------
+  const projection = d3.geoNaturalEarth1()
+    .fitExtent([[PAD, PAD], [W - PAD, H - PAD]], {type:"Sphere"});
+  const geoPath = d3.geoPath(projection);
+
+  // -------- LOAD --------
+  const [worldTopo, rowsRaw] = await Promise.all([
+    d3.json(WORLD_URL),
+    d3.csv(CSV, d => ({
+      year: +d[COLS.year],
+      lat: +d[COLS.lat],
+      lon: +d[COLS.lon],
+      value: +d[COLS.value],
+      scenario: d[COLS.scenario]
+    }))
+  ]);
+  const rows = rowsRaw.filter(r =>
+    Number.isFinite(r.year) && Number.isFinite(r.lat) &&
+    Number.isFinite(r.lon) && Number.isFinite(r.value) && r.scenario
+  );
+
+  // basemap
+  const countries = topojson.feature(worldTopo, worldTopo.objects.countries);
+  baseSvg.append("path").attr("d", geoPath({type:"Sphere"})).attr("fill","#0c152a");
+  baseSvg.append("g").selectAll("path")
+    .data(countries.features).join("path")
+    .attr("d", geoPath).attr("fill","#0e1d3b")
+    .attr("stroke","#243861").attr("stroke-width",0.5).attr("vector-effect","non-scaling-stroke");
+
+  // years & scenarios
+  const years = Array.from(new Set(rows.map(d=>d.year))).sort((a,b)=>a-b);
+  const scenarios = Array.from(new Set(rows.map(d=>d.scenario))).sort();
+  const byScenarioYear = d3.group(rows, d=>d.scenario, d=>d.year); // Map(scenario -> Map(year -> rows[]))
+
+  // populate selects
+  selA.selectAll("option").data(scenarios).join("option").attr("value", d=>d).text(d=>d);
+  selB.selectAll("option").data(scenarios).join("option").attr("value", d=>d).text(d=>d);
+  // defaults: first two distinct scenarios (or the same if only one exists)
+  selA.property("value", scenarios[0] ?? "");
+  selB.property("value", scenarios[1] ?? scenarios[0] ?? "");
+
+  labelA.text(selA.property("value") || "Left");
+  labelB.text(selB.property("value") || "Right");
+
+  // color scale (global by default)
+  const allVals = rows.map(d=>d.value);
+  const globalExtent = d3.extent(allVals);
+  const color = d3.scaleSequential().domain(globalExtent).interpolator(d3.interpolateTurbo);
+
+  // legend
+  const legend = baseSvg.append("g").attr("class","legend").attr("transform",`translate(${W-260},${H-60})`);
+  drawLegend(globalExtent);
+  function drawLegend(domain){
+    legend.selectAll("*").remove();
+    const defs = baseSvg.append("defs");
+    const id = "grad" + Math.random().toString(36).slice(2);
+    const grad = defs.append("linearGradient").attr("id",id).attr("x1","0%").attr("x2","100%");
+    d3.range(0,1.0001,0.1).forEach(t=>{
+      grad.append("stop").attr("offset",`${t*100}%`).attr("stop-color", d3.interpolateTurbo(t));
+    });
+    legend.append("rect").attr("width",200).attr("height",12).attr("fill",`url(#${id})`).attr("stroke","#243861");
+    const s = d3.scaleLinear().domain(domain).range([0,200]);
+    legend.append("g").attr("transform","translate(0,12)").call(d3.axisBottom(s).ticks(5).tickSize(4))
+      .selectAll("text").attr("fill","#9ab");
+    legend.append("text").attr("x",0).attr("y",-6).attr("fill","#9ab").text("pr (mm/day)");
+  }
+
+  // -------- UI --------
+  const slider = d3.select("#yearSlider").attr("min",0).attr("max",Math.max(0,years.length-1)).attr("value",0);
+  const yearLabel = d3.select("#yearLabel");
+  const ptSize = d3.select("#ptSize");
+  const ptAlpha = d3.select("#ptAlpha");
+  const playBtn = d3.select("#play");
+
+  let playing=false, timer=null, frameDelay=900;
+
+  selA.on("change", () => { labelA.text(selA.property("value")); drawBoth(currentYear()); });
+  selB.on("change", () => { labelB.text(selB.property("value")); drawBoth(currentYear()); });
+  slider.on("input", updateYear);
+  ptSize.on("input", () => drawBoth(currentYear()));
+  ptAlpha.on("input", () => drawBoth(currentYear()));
+  playBtn.on("click", () => {
+    playing = !playing;
+    playBtn.text(playing ? "⏸ Pause" : "▶ Play");
+    if (playing) loop(); else clearTimeout(timer);
+  });
+
+  function currentYear(){ return years[+slider.node().value]; }
+  function setYearIndex(i){ slider.node().value = Math.max(0, Math.min(years.length-1, i)); updateYear(); }
+  function loop(){ setYearIndex((+slider.node().value + 1) % years.length); timer=setTimeout(loop, frameDelay); }
+
+  // -------- Swipe interaction --------
+  const visNode = document.getElementById("vis");
+  const bounds = () => visNode.getBoundingClientRect();
+  let splitX = Math.round(W/2);
+
+  function setSplit(px){
+    splitX = Math.max(0, Math.min(W, px));
+    canvasB.style.clipPath = `inset(0 0 0 ${splitX}px)`;
+    divider.style.left = splitX + "px";
+    handle.style.left  = splitX + "px";
+  }
+  setSplit(Math.round(W/2));
+
+  vis.on("pointerdown", (ev)=> { move(ev); vis.on("pointermove", move); });
+  d3.select(window).on("pointerup", ()=> vis.on("pointermove", null));
+  function move(ev){
+    const r = bounds();
+    setSplit(Math.round((ev.clientX - r.left) * (W / r.width)));
+  }
+
+  // -------- Hover tooltip (nearest on visible side) --------
+  visNode.addEventListener("mousemove",(ev)=>{
+    const r = bounds();
+    const mx = (ev.clientX - r.left) * (W / r.width);
+    const my = (ev.clientY - r.top)  * (H / r.height);
+    const yr = currentYear();
+    const sideA = mx <= splitX;
+    const scen = sideA ? selA.property("value") : selB.property("value");
+    const rows = (byScenarioYear.get(scen)?.get(yr)) || [];
+    const radius = +ptSize.node().value * 4;
+    let best=null, bestD2=radius*radius;
+    for (const d of rows){
+      const xy = projection([d.lon, d.lat]); if (!xy) continue;
+      const dx = xy[0]-mx, dy=xy[1]-my, d2 = dx*dx+dy*dy;
+      if (d2 < bestD2){ bestD2=d2; best={x:xy[0], y:xy[1], d}; }
+    }
+    if (best){
+      tooltip.style("left", best.x+"px").style("top", best.y+"px").style("opacity",1)
+        .html(`<div><strong>${yr}</strong> — ${scen}</div>
+               <div>Lat: ${best.d.lat.toFixed(2)}, Lon: ${best.d.lon.toFixed(2)}</div>
+               <div>pr: <strong>${best.d.value.toFixed(3)}</strong> mm/day</div>`);
+    } else tooltip.style("opacity",0);
+  });
+  visNode.addEventListener("mouseleave", ()=> tooltip.style("opacity",0));
+
+  // -------- Drawing --------
+  function drawPoints(ctx, data){
+    ctx.clearRect(0,0,W,H);
+    const r = +ptSize.node().value;
+    const a = +ptAlpha.node().value;
+    ctx.globalAlpha = a;
+    for (const d of data){
+      const xy = projection([d.lon, d.lat]); if (!xy) continue;
+      ctx.beginPath();
+      ctx.fillStyle = color(d.value);
+      ctx.arc(xy[0], xy[1], r, 0, Math.PI*2);
+      ctx.fill();
+    }
+  }
+
+  function drawBoth(yr){
+    const scenA = selA.property("value");
+    const scenB = selB.property("value");
+    const A = (byScenarioYear.get(scenA)?.get(yr)) || [];
+    const B = (byScenarioYear.get(scenB)?.get(yr)) || [];
+
+    if (usePerYearColorScale){
+      const ext = d3.extent(A.concat(B), d=>d.value);
+      color.domain(ext[0]===undefined ? globalExtent : ext);
+      drawLegend(color.domain());
+    } else {
+      color.domain(globalExtent);
+      drawLegend(globalExtent);
+    }
+    drawPoints(ctxA, A);
+    drawPoints(ctxB, B);
+  }
+
+  function updateYear(){
+    const yr = currentYear();
+    d3.select("#yearLabel").text(yr);
+    drawBoth(yr);
+  }
+
+  // ========= TIMESERIES (two scenarios, global mean pr) =========
+
+// roll up mean pr by (scenario, year)
+const meanByScenarioYear = d3.rollup(
+  rows,
+  v => d3.mean(v, d => d.value),
+  d => d.scenario,
+  d => d.year
+);
+
+// materialize into sorted arrays for easy plotting
+const seriesByScenario = new Map(
+  Array.from(meanByScenarioYear, ([scen, yearMap]) => [
+    scen,
+    Array.from(yearMap, ([yr, mean]) => ({ year:+yr, mean:+mean }))
+      .sort((a,b)=>a.year-b.year)
+  ])
+);
+
+// y domain across all scenarios
+const allMeans = Array.from(seriesByScenario.values()).flat().map(d => d.mean);
+const yExtentGlobal = d3.extent(allMeans);
+
+// build chart
+const tsSvg = d3.select("#ts");
+const TS_W = 1000, TS_H = 280, M = {t:14, r:20, b:36, l:48};
+const tsInnerW = TS_W - M.l - M.r;
+const tsInnerH = TS_H - M.t - M.b;
+const tsG = tsSvg.append("g").attr("transform", `translate(${M.l},${M.t})`);
+
+const xTS = d3.scaleLinear().domain(d3.extent(years)).range([0, tsInnerW]);
+const yTS = d3.scaleLinear().domain(yExtentGlobal).nice().range([tsInnerH, 0]);
+
+// grid
+tsG.append("g").attr("class","ts-grid")
+  .call(d3.axisLeft(yTS).ticks(5).tickSize(-tsInnerW).tickFormat(""))
+  .selectAll("line").attr("stroke-dasharray","2,3");
+
+// axes
+tsG.append("g").attr("class","axis").attr("transform", `translate(0,${tsInnerH})`)
+  .call(d3.axisBottom(xTS).ticks(6).tickFormat(d3.format("d")));
+tsG.append("g").attr("class","axis")
+  .call(d3.axisLeft(yTS).ticks(5));
+
+const lineGen = d3.line()
+  .x(d => xTS(d.year))
+  .y(d => yTS(d.mean))
+  .defined(d => Number.isFinite(d.mean));
+
+// paths and dot layers
+const pathA = tsG.append("path").attr("fill","none").attr("stroke","#2f6bff").attr("stroke-width",2);
+const pathB = tsG.append("path").attr("fill","none").attr("stroke","#ffb52f").attr("stroke-width",2);
+const dotsA = tsG.append("g");
+const dotsB = tsG.append("g");
+
+// marker synced to year slider
+const marker = tsG.append("line").attr("class","ts-marker")
+  .attr("y1", 0).attr("y2", tsInnerH).style("pointer-events","none");
+
+// tooltip for the timeseries (separate from map tooltip)
+const tsTip = d3.select("#tsTip");
+
+function renderTS() {
+  const scenA = selA.property("value");
+  const scenB = selB.property("value");
+  const sA = seriesByScenario.get(scenA) || [];
+  const sB = seriesByScenario.get(scenB) || [];
+
+  pathA.attr("d", lineGen(sA));
+  pathB.attr("d", lineGen(sB));
+
+  // bind dots (one per year point)
+  dotsA.selectAll("circle").data(sA, d => d.year).join(
+    enter => enter.append("circle")
+      .attr("class","ts-dot").attr("fill","#2f6bff")
+      .attr("r",3.5).attr("cx", d=>xTS(d.year)).attr("cy", d=>yTS(d.mean))
+      .on("mouseenter", (ev,d)=> showTsTip(ev, d, scenA))
+      .on("mousemove",  (ev,d)=> showTsTip(ev, d, scenA))
+      .on("mouseleave", hideTsTip),
+    update => update.attr("cx", d=>xTS(d.year)).attr("cy", d=>yTS(d.mean)),
+    exit   => exit.remove()
+  );
+
+  dotsB.selectAll("circle").data(sB, d => d.year).join(
+    enter => enter.append("circle")
+      .attr("class","ts-dot").attr("fill","#ffb52f")
+      .attr("r",3.5).attr("cx", d=>xTS(d.year)).attr("cy", d=>yTS(d.mean))
+      .on("mouseenter", (ev,d)=> showTsTip(ev, d, scenB))
+      .on("mousemove",  (ev,d)=> showTsTip(ev, d, scenB))
+      .on("mouseleave", hideTsTip),
+    update => update.attr("cx", d=>xTS(d.year)).attr("cy", d=>yTS(d.mean)),
+    exit   => exit.remove()
+  );
+
+  placeTsMarker(currentYear());
+}
+
+function showTsTip(ev, d, scen) {
+  const wrap = document.getElementById("tsWrap").getBoundingClientRect();
+  const boxX = ev.clientX - wrap.left + 10;
+  const boxY = ev.clientY - wrap.top  - 10;
+  tsTip
+    .style("left", boxX + "px")
+    .style("top",  boxY + "px")
+    .style("opacity", 1)
+    .html(`<div><strong>${d.year}</strong> — ${scen}</div>
+           <div>Mean pr: <strong>${d.mean.toFixed(3)}</strong> mm/day</div>`);
+}
+function hideTsTip(){ tsTip.style("opacity", 0); }
+
+function placeTsMarker(yr){
+  marker.attr("x1", xTS(yr)).attr("x2", xTS(yr));
+}
+
+// keep chart in sync with existing UI without modifying your handlers
+selA.on("change.ts", renderTS);   // namespaced event so it doesn't overwrite yours
+selB.on("change.ts", renderTS);
+d3.select("#yearSlider").on("input.ts", () => placeTsMarker(currentYear()));
+
+// allow scrubbing years on the chart (optional)
+tsSvg.on("mousemove", (ev) => {
+  const pt = d3.pointer(ev, tsG.node());
+  const yr = Math.round(xTS.invert(pt[0]));
+  if (years.includes(yr)) {
+    const idx = years.indexOf(yr);
+    // move your existing slider; this will also update the map via your handler
+    document.getElementById("yearSlider").value = idx;
+    placeTsMarker(yr);
+  }
+});
+
+// draw once
+renderTS();
+placeTsMarker(currentYear());
+
+
+  // initial render
+  updateYear();
+})();
+</script>
 </body>
 </html>

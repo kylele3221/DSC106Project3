@@ -1,9 +1,0 @@
-,activity_id,institution_id,source_id,experiment_id,member_id,table_id,variable_id,grid_label,zstore,dcpp_init_year,version
-249941,ScenarioMIP,NCAR,CESM2-WACCM,ssp245,r1i1p1f1,Amon,pr,gn,gs://cmip6/CMIP6/ScenarioMIP/NCAR/CESM2-WACCM/ssp245/r1i1p1f1/Amon/pr/gn/v20190815/,,20190815
-413877,ScenarioMIP,NCAR,CESM2-WACCM,ssp245,r5i1p1f1,Amon,pr,gn,gs://cmip6/CMIP6/ScenarioMIP/NCAR/CESM2-WACCM/ssp245/r5i1p1f1/Amon/pr/gn/v20200206/,,20200206
-414182,ScenarioMIP,NCAR,CESM2-WACCM,ssp245,r4i1p1f1,Amon,pr,gn,gs://cmip6/CMIP6/ScenarioMIP/NCAR/CESM2-WACCM/ssp245/r4i1p1f1/Amon/pr/gn/v20200206/,,20200206
-415209,ScenarioMIP,NCAR,CESM2-WACCM,ssp245,r3i1p1f1,Amon,pr,gn,gs://cmip6/CMIP6/ScenarioMIP/NCAR/CESM2-WACCM/ssp245/r3i1p1f1/Amon/pr/gn/v20200206/,,20200206
-419834,ScenarioMIP,NCAR,CESM2-WACCM,ssp245,r2i1p1f1,Amon,pr,gn,gs://cmip6/CMIP6/ScenarioMIP/NCAR/CESM2-WACCM/ssp245/r2i1p1f1/Amon/pr/gn/v20200224/,,20200224
-444460,ScenarioMIP,NCAR,CESM2,ssp245,r10i1p1f1,Amon,pr,gn,gs://cmip6/CMIP6/ScenarioMIP/NCAR/CESM2/ssp245/r10i1p1f1/Amon/pr/gn/v20200528/,,20200528
-445058,ScenarioMIP,NCAR,CESM2,ssp245,r4i1p1f1,Amon,pr,gn,gs://cmip6/CMIP6/ScenarioMIP/NCAR/CESM2/ssp245/r4i1p1f1/Amon/pr/gn/v20200528/,,20200528
-446067,ScenarioMIP,NCAR,CESM2,ssp245,r11i1p1f1,Amon,pr,gn,gs://cmip6/CMIP6/ScenarioMIP/NCAR/CESM2/ssp245/r11i1p1f1/Amon/pr/gn/v20200528/,,20200528
