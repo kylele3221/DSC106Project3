@@ -178,3 +178,15 @@ svg.basemap + g path {
   display:block;
   margin:8px auto 40px;  /* 40px space below legend so labels are visible */
 }
+
+#overview {
+  background: #f7f9fc;
+  padding: 20px;
+  border-radius: 12px;
+  margin-top: 32px;
+  line-height: 1.6;
+}
+#overview h2 {
+  margin-bottom: 12px;
+}
+
